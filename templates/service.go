@@ -3,7 +3,6 @@ package templates
 import (
 	"bytes"
 	"fmt"
-	"path/filepath"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/iancoleman/strcase"
@@ -44,8 +43,7 @@ export class {{.Name}} {
 		(req: {{requestMessage $method $file}}) => req.serializeBinary(),
 		{{responseMessage $method $file}}.deserializeBinary
 	);
-{{- end}}
-
+{{end}}
 	constructor(
 		private hostname: string,
 	) { }
@@ -80,10 +78,12 @@ export enum {{$enum.GetName}} {
 {{- end}}
 
 {{range $message := .MessageType -}}
-export interface {{messageObjectName $message}} {
+export namespace {{messageName $message}} {
+	export type AsObject = {
 {{- range $field := .Field}}
-	{{camelFieldName $field}}: {{fieldType $field $file}},
+		{{camelFieldName $field}}: {{fieldType $field $file}},
 {{- end}}
+	}
 }
 
 export class {{messageName $message}} extends jspb.Message {
@@ -183,14 +183,11 @@ func funcmap(depLookup map[string]string) template.FuncMap {
 			}
 			return unique(messages)
 		},
-		"messageImportPath": func(file *descriptor.FileDescriptorProto) string {
-			return filepath.Base(stripProto(file.GetName())) + "_pb.js"
-		},
 		"messageName": func(message *descriptor.DescriptorProto) string {
-			return message.GetName() + "Message"
+			return message.GetName()
 		},
 		"messageObjectName": func(message *descriptor.DescriptorProto) string {
-			return message.GetName()
+			return message.GetName() + ".AsObject"
 		},
 		"methodName": func(method *descriptor.MethodDescriptorProto) string {
 			return strcase.ToLowerCamel(method.GetName())
@@ -211,16 +208,16 @@ func funcmap(depLookup map[string]string) template.FuncMap {
 			return protoPathToNS(dependency)
 		},
 		"requestObject": func(method *descriptor.MethodDescriptorProto, file *descriptor.FileDescriptorProto) string {
-			return strings.TrimPrefix(method.GetInputType(), "."+file.GetPackage()+".")
+			return messageTypeToTS(method.GetInputType(), file, depLookup) + ".AsObject"
 		},
 		"responseObject": func(method *descriptor.MethodDescriptorProto, file *descriptor.FileDescriptorProto) string {
-			return strings.TrimPrefix(method.GetOutputType(), "."+file.GetPackage()+".")
+			return messageTypeToTS(method.GetOutputType(), file, depLookup) + ".AsObject"
 		},
 		"requestMessage": func(method *descriptor.MethodDescriptorProto, file *descriptor.FileDescriptorProto) string {
-			return strings.TrimPrefix(method.GetInputType(), "."+file.GetPackage()+".") + "Message"
+			return messageTypeToTS(method.GetInputType(), file, depLookup)
 		},
 		"responseMessage": func(method *descriptor.MethodDescriptorProto, file *descriptor.FileDescriptorProto) string {
-			return strings.TrimPrefix(method.GetOutputType(), "."+file.GetPackage()+".") + "Message"
+			return messageTypeToTS(method.GetOutputType(), file, depLookup)
 		},
 		"pascalFieldName": func(field *descriptor.FieldDescriptorProto) string {
 			return strcase.ToCamel(field.GetName())
@@ -263,14 +260,7 @@ func funcmap(depLookup map[string]string) template.FuncMap {
 			case descriptor.FieldDescriptorProto_TYPE_ENUM:
 				return stripPackage(field.GetTypeName()) // TODO: support properly
 			case descriptor.FieldDescriptorProto_TYPE_MESSAGE:
-				depfile, ok := depLookup[field.GetTypeName()]
-				if !ok {
-					return "any" // TODO: we didn't find the message in any input protos
-				}
-				if depfile != file.GetName() {
-					return fmt.Sprintf("%s.%s", protoPathToNS(depfile), stripPackage(field.GetTypeName()))
-				}
-				return stripPackage(field.GetTypeName()) // TODO: support properly
+				return messageTypeToTS(field.GetTypeName(), file, depLookup)
 			}
 			log.Fatalf("unknown field type: %s", field.GetTypeName())
 			return ""
@@ -410,4 +400,15 @@ func protoPathToNS(path string) string {
 	path = stripProto(path)
 	parts := strings.Split(path, "/")
 	return strcase.ToLowerCamel(strings.Join(parts, "_"))
+}
+
+func messageTypeToTS(typeName string, currentFile *descriptor.FileDescriptorProto, depLookup map[string]string) string {
+	depfile, ok := depLookup[typeName]
+	if !ok {
+		return "any" // TODO: we didn't find the message in any input protos
+	}
+	if depfile != currentFile.GetName() {
+		return fmt.Sprintf("%s.%s", protoPathToNS(depfile), stripPackage(typeName))
+	}
+	return stripPackage(typeName)
 }
