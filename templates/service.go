@@ -93,10 +93,7 @@ export class {{messageName $message}} extends jspb.Message {
 	}
 
 	set{{pascalFieldName $field}}(value: {{fieldType $field $file}}): void {
-		// todo: might need to use different "setField" variant
-		// for different proto types
-		// but i think the @types/google-protobuf is missing the definitions
-		jspb.Message.setField(this, {{$field.Number}}, value);
+		jspb.Message.{{jspbFieldSetter $field}}(this, {{$field.Number}}, value);
 	}
 {{end}}
 	serializeBinary(): Uint8Array {
@@ -105,7 +102,11 @@ export class {{messageName $message}} extends jspb.Message {
 {{- range $field := .Field}}
 		message = this.get{{pascalFieldName $field}}();
 		if (message.length > 0) {
-			writer.write{{protoType $field}}({{$field.Number}}, message);
+			writer.write{{jspbProtoTypeMethodName $field}}({{$field.Number}}, message
+				{{- if eq (jspbProtoTypeMethodName $field) "Message" -}}
+				, {{fieldType $field $file}}.serializeBinaryToWriter
+				{{- end -}}
+			);
 		}
 {{- end}}
 		return writer.getResultBuffer();
@@ -142,7 +143,14 @@ export class {{messageName $message}} extends jspb.Message {
 			switch (field) {
 {{- range $field := .Field}}
 			case {{$field.Number}}:
-				message.set{{pascalFieldName $field}}(reader.read{{protoType $field}}());
+{{- if ne (jspbProtoTypeMethodName $field) "Message"}}
+				message.set{{pascalFieldName $field}}(reader.read{{jspbProtoTypeMethodName $field}}());
+{{- end -}}
+{{- if eq (jspbProtoTypeMethodName $field) "Message"}}
+				const {{camelFieldName $field}} = new {{fieldType $field $file}}();
+				reader.read{{jspbProtoTypeMethodName $field}}({{camelFieldName $field}}, {{fieldType $field $file}}.deserializeBinaryFromReader);
+				message.set{{pascalFieldName $field}}({{camelFieldName $field}});
+{{- end}}
 				break;
 {{- end}}
 			default:
@@ -159,7 +167,7 @@ export class {{messageName $message}} extends jspb.Message {
 `
 
 func funcmap(depLookup map[string]string) template.FuncMap {
-	return template.FuncMap{
+	funcs := template.FuncMap{
 		"typeName": func(name *string) string {
 			if name != nil && *name != "" {
 				parts := strings.Split(*name, ".")
@@ -265,7 +273,7 @@ func funcmap(depLookup map[string]string) template.FuncMap {
 			log.Fatalf("unknown field type: %s", field.GetTypeName())
 			return ""
 		},
-		"protoType": func(field *descriptor.FieldDescriptorProto) string {
+		"jspbProtoTypeMethodName": func(field *descriptor.FieldDescriptorProto) string {
 			switch field.GetType() {
 			case descriptor.FieldDescriptorProto_TYPE_FLOAT:
 				return "Float"
@@ -298,14 +306,20 @@ func funcmap(depLookup map[string]string) template.FuncMap {
 			case descriptor.FieldDescriptorProto_TYPE_BYTES:
 				return "Bytes"
 			case descriptor.FieldDescriptorProto_TYPE_ENUM:
-				return stripPackage(field.GetTypeName()) // TODO: support properly
+				return "Enum"
 			case descriptor.FieldDescriptorProto_TYPE_MESSAGE:
-				return stripPackage(field.GetTypeName()) // TODO: support properly
+				return "Message"
 			}
 			log.Fatalf("unknown proto type: %s", field.GetTypeName())
 			return ""
 		},
 		"defaultValue": func(field *descriptor.FieldDescriptorProto) string {
+			valueOr := func(value string, fallback string) string {
+				if value == "" {
+					return fallback
+				}
+				return value
+			}
 			switch field.GetType() {
 			case descriptor.FieldDescriptorProto_TYPE_FLOAT:
 				fallthrough
@@ -330,21 +344,25 @@ func funcmap(depLookup map[string]string) template.FuncMap {
 			case descriptor.FieldDescriptorProto_TYPE_SFIXED64:
 				fallthrough
 			case descriptor.FieldDescriptorProto_TYPE_DOUBLE:
-				if field.GetDefaultValue() == "" {
-					return "0"
-				}
-				return field.GetDefaultValue()
+				return valueOr(field.GetDefaultValue(), "0")
 			case descriptor.FieldDescriptorProto_TYPE_STRING:
 				return fmt.Sprintf(`"%s"`, field.GetDefaultValue())
 			case descriptor.FieldDescriptorProto_TYPE_ENUM:
-				return field.GetDefaultValue() // TODO: support this properly
+				return valueOr(field.GetDefaultValue(), "0")
 			case descriptor.FieldDescriptorProto_TYPE_MESSAGE:
-				return stripPackage(field.GetTypeName()) // TODO: support this properly
+				return valueOr(field.GetDefaultValue(), "null")
 			}
 			log.Fatalf("unknown default for proto field type: %s", field.GetType())
 			return ""
 		},
+		"jspbFieldSetter": func(field *descriptor.FieldDescriptorProto) string {
+			if field.GetType() == descriptor.FieldDescriptorProto_TYPE_MESSAGE {
+				return "setWrapperField"
+			}
+			return "setField"
+		},
 	}
+	return funcs
 }
 
 func NewFile(file *descriptor.FileDescriptorProto, depLookup map[string]string) []*plugin.CodeGeneratorResponse_File {
