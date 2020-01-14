@@ -50,9 +50,13 @@ export class {{.Name}} {
 {{range $method := .Method}}
 	{{methodName $method}}(req: {{requestObject $method $file}}, metadata?: grpcWeb.Metadata): Promise<{{responseObject $method $file}}> {
 		return new Promise((resolve, reject) => {
+			const message = new {{requestMessage $method $file}}();
+{{- range $field := (typeToMessageProto $method.GetInputType).GetField}}
+			message.set{{pascalFieldName $field}}(req.{{camelFieldName $field}});
+{{- end}}
 			this.client.rpcCall(
 				this.hostname + '/{{$package}}.{{$service.GetName}}/{{$method.GetName}}',
-				{{requestMessage $method $file}}.fromObject(req),
+				message,
 				metadata || {},
 				this.methodInfo{{$method.Name}},
 				(err: grpcWeb.Error, res: {{responseMessage $method $file}}) => {
@@ -78,7 +82,7 @@ export enum {{$enum.GetName}} {
 {{- end}}
 
 {{range $message := .MessageType -}}
-export namespace {{messageName $message}} {
+export namespace {{messageName $message $file}} {
 	export type AsObject = {
 {{- range $field := .Field}}
 		{{camelFieldName $field}}: {{fieldType $field $file}},
@@ -86,7 +90,7 @@ export namespace {{messageName $message}} {
 	}
 }
 
-export class {{messageName $message}} extends jspb.Message {
+export class {{messageName $message $file}} extends jspb.Message {
 {{range $field := .Field}}
 	get{{pascalFieldName $field}}(): {{fieldType $field $file}} {
 		return jspb.Message.getFieldWithDefault(this, {{$field.GetNumber}}, {{defaultValue $field}});
@@ -120,21 +124,21 @@ export class {{messageName $message}} extends jspb.Message {
 		};
 	}
 
-	static fromObject(obj: {{messageObjectName $message}}): {{messageName $message}} {
-		const message = new {{messageName $message}}();
+	static fromObject(obj: {{messageObjectName $message}}): {{messageName $message $file}} {
+		const message = new {{messageName $message $file}}();
 {{- range $field := .Field}}
 		message.set{{pascalFieldName $field}}(obj.{{camelFieldName $field}});
 {{- end}}
 		return message;
 	}
 
-	static deserializeBinary(bytes: Uint8Array): {{messageName $message}} {
+	static deserializeBinary(bytes: Uint8Array): {{messageName $message $file}} {
 		var reader = new jspb.BinaryReader(bytes);
-		var message = new {{messageName $message}}();
-		return {{messageName $message}}.deserializeBinaryFromReader(message, reader);
+		var message = new {{messageName $message $file}}();
+		return {{messageName $message $file}}.deserializeBinaryFromReader(message, reader);
 	}
 
-	static deserializeBinaryFromReader(message: {{messageName $message}}, reader: jspb.BinaryReader): {{messageName $message}} {
+	static deserializeBinaryFromReader(message: {{messageName $message $file}}, reader: jspb.BinaryReader): {{messageName $message $file}} {
 		while (reader.nextField()) {
 			if (reader.isEndGroup()) {
 				break;
@@ -166,37 +170,8 @@ export class {{messageName $message}} extends jspb.Message {
 {{end}}
 `
 
-func funcmap(depLookup map[string]string) template.FuncMap {
+func funcmap(depLookup map[string]Dependency) template.FuncMap {
 	funcs := template.FuncMap{
-		"typeName": func(name *string) string {
-			if name != nil && *name != "" {
-				parts := strings.Split(*name, ".")
-				return parts[len(parts)-1]
-			}
-			return ""
-		},
-		"messageImports": func(file *descriptor.FileDescriptorProto) []string {
-			messages := []string{}
-			if file != nil {
-				for _, svc := range file.Service {
-					for _, method := range svc.Method {
-						if method.GetInputType() != "" {
-							messages = append(messages, method.GetInputType())
-						}
-						if method.GetOutputType() != "" {
-							messages = append(messages, method.GetOutputType())
-						}
-					}
-				}
-			}
-			return unique(messages)
-		},
-		"messageName": func(message *descriptor.DescriptorProto) string {
-			return message.GetName()
-		},
-		"messageObjectName": func(message *descriptor.DescriptorProto) string {
-			return message.GetName() + ".AsObject"
-		},
 		"methodName": func(method *descriptor.MethodDescriptorProto) string {
 			return strcase.ToLowerCamel(method.GetName())
 		},
@@ -215,6 +190,12 @@ func funcmap(depLookup map[string]string) template.FuncMap {
 		"importNS": func(dependency string) string {
 			return protoPathToNS(dependency)
 		},
+		"messageName": func(message *descriptor.DescriptorProto, file *descriptor.FileDescriptorProto) string {
+			return messageTypeToTS(fmt.Sprintf(".%s.%s", file.GetPackage(), message.GetName()), file, depLookup)
+		},
+		"messageObjectName": func(message *descriptor.DescriptorProto) string {
+			return message.GetName() + ".AsObject"
+		},
 		"requestObject": func(method *descriptor.MethodDescriptorProto, file *descriptor.FileDescriptorProto) string {
 			return messageTypeToTS(method.GetInputType(), file, depLookup) + ".AsObject"
 		},
@@ -232,6 +213,12 @@ func funcmap(depLookup map[string]string) template.FuncMap {
 		},
 		"camelFieldName": func(field *descriptor.FieldDescriptorProto) string {
 			return strcase.ToLowerCamel(field.GetName())
+		},
+		"typeToMessageProto": func(typeName string) *descriptor.DescriptorProto {
+			if value, ok := depLookup[typeName]; ok {
+				return value.Message
+			}
+			panic(fmt.Sprintf("unknown message type: %s", typeName))
 		},
 		"fieldType": func(field *descriptor.FieldDescriptorProto, file *descriptor.FileDescriptorProto) string {
 			switch field.GetType() {
@@ -365,7 +352,7 @@ func funcmap(depLookup map[string]string) template.FuncMap {
 	return funcs
 }
 
-func NewFile(file *descriptor.FileDescriptorProto, depLookup map[string]string) []*plugin.CodeGeneratorResponse_File {
+func NewFile(file *descriptor.FileDescriptorProto, depLookup map[string]Dependency) []*plugin.CodeGeneratorResponse_File {
 	// well-known proto files from google/protobuf will
 	// be provided by the google-protobuf npm package
 	if strings.HasPrefix(file.GetName(), "google/protobuf") {
@@ -379,7 +366,7 @@ func NewFile(file *descriptor.FileDescriptorProto, depLookup map[string]string) 
 	}
 }
 
-func run(tpl string, file *descriptor.FileDescriptorProto, depLookup map[string]string) string {
+func run(tpl string, file *descriptor.FileDescriptorProto, depLookup map[string]Dependency) string {
 	t, err := template.New("").Funcs(funcmap(depLookup)).Parse(tpl)
 	if err != nil {
 		log.Fatal(errors.Wrap(err, "bad service template"))
@@ -420,13 +407,32 @@ func protoPathToNS(path string) string {
 	return strcase.ToLowerCamel(strings.Join(parts, "_"))
 }
 
-func messageTypeToTS(typeName string, currentFile *descriptor.FileDescriptorProto, depLookup map[string]string) string {
+func messageTypeToTS(typeName string, currentFile *descriptor.FileDescriptorProto, depLookup map[string]Dependency) string {
 	depfile, ok := depLookup[typeName]
 	if !ok {
 		return "any" // TODO: we didn't find the message in any input protos
 	}
-	if depfile != currentFile.GetName() {
-		return fmt.Sprintf("%s.%s", protoPathToNS(depfile), stripPackage(typeName))
+	if depfile.File != currentFile.GetName() {
+		return fmt.Sprintf("%s.%s", protoPathToNS(depfile.File), stripPackage(typeName))
 	}
 	return stripPackage(typeName)
+}
+
+type Dependency struct {
+	File    string
+	Message *descriptor.DescriptorProto
+}
+
+func NewDependencyLookupTable(req *plugin.CodeGeneratorRequest) map[string]Dependency {
+	lookup := map[string]Dependency{}
+	for _, f := range req.ProtoFile {
+		for _, m := range f.GetMessageType() {
+			qualified := fmt.Sprintf(".%s.%s", f.GetPackage(), m.GetName())
+			lookup[qualified] = Dependency{
+				File:    f.GetName(),
+				Message: m,
+			}
+		}
+	}
+	return lookup
 }

@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"io/ioutil"
 	"log"
 	"os"
@@ -25,7 +24,7 @@ func main() {
 		log.Fatal(errors.Wrap(err, "bad codegen request"))
 	}
 
-	depLookupTable := dependencyLookupTable(req)
+	depLookupTable := templates.NewDependencyLookupTable(req)
 
 	res := &plugin.CodeGeneratorResponse{}
 	for _, f := range req.ProtoFile {
@@ -40,15 +39,4 @@ func main() {
 		log.Fatal(errors.Wrap(err, "failed to marshal codegen response"))
 	}
 	os.Stdout.Write(out)
-}
-
-func dependencyLookupTable(req *plugin.CodeGeneratorRequest) map[string]string {
-	lookup := map[string]string{}
-	for _, f := range req.ProtoFile {
-		for _, m := range f.GetMessageType() {
-			qualified := fmt.Sprintf(".%s.%s", f.GetPackage(), m.GetName())
-			lookup[qualified] = f.GetName()
-		}
-	}
-	return lookup
 }
