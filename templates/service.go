@@ -138,20 +138,23 @@ export class {{messageName $message $file}} extends jspb.Message {
 	set{{pascalFieldName $field}}(value: {{fieldType $field $file}}): void {
 		jspb.Message.{{jspbFieldSetter $field}}(this, {{$field.Number}}, value);
 	}
+
+	{{- if (isRepeated $field)}}
+	{{if (isMessage $field)}}
+	add{{pascalFieldName $field}}(value: {{fieldTypeName $field $file}}, index?: number): {{fieldTypeName $field $file}} {
+		return jspb.Message.addToRepeatedWrapperField(this, {{$field.Number}}, value, {{fieldTypeName $field $file}}, index);
+	}
+	{{- end -}}
+	{{if not (isMessage $field)}}
+	add{{pascalFieldName $field}}(value: {{fieldTypeName $field $file}}, index?: number): void {
+		return jspb.Message.addToRepeatedField(this, {{$field.Number}}, value, index);
+	}
+	{{- end -}}
+	{{end}}
 {{end}}
 	serializeBinary(): Uint8Array {
 		const writer = new jspb.BinaryWriter();
-		let message: any;
-{{- range $field := .Field}}
-		message = this.get{{pascalFieldName $field}}();
-		if (message.length > 0) {
-			writer.write{{jspbProtoTypeMethodName $field}}({{$field.Number}}, message
-				{{- if eq (jspbProtoTypeMethodName $field) "Message" -}}
-				, {{fieldType $field $file}}.serializeBinaryToWriter
-				{{- end -}}
-			);
-		}
-{{- end}}
+		{{messageName $message $file}}.serializeBinaryToWriter(this, writer);
 		return writer.getResultBuffer();
 	}
 
@@ -171,6 +174,19 @@ export class {{messageName $message $file}} extends jspb.Message {
 		return message;
 	}
 
+	static serializeBinaryToWriter(message: {{messageName $message $file}}, writer: jspb.BinaryWriter): void {
+{{- range $field := .Field}}
+		const field{{$field.Number}} = message.get{{pascalFieldName $field}}();
+		if (field{{$field.Number}}{{zeroCheck $field}}) {
+			writer.{{binaryWriterMethodName $field}}({{$field.Number}}, field{{$field.Number}}
+				{{- if (isMessage $field) -}}
+				, {{fieldTypeName $field $file}}.serializeBinaryToWriter
+				{{- end -}}
+			);
+		}
+{{- end}}
+	}
+
 	static deserializeBinary(bytes: Uint8Array): {{messageName $message $file}} {
 		var reader = new jspb.BinaryReader(bytes);
 		var message = new {{messageName $message $file}}();
@@ -182,18 +198,22 @@ export class {{messageName $message $file}} extends jspb.Message {
 			if (reader.isEndGroup()) {
 				break;
 			}
-			let submsg: any;
 			const field = reader.getFieldNumber();
 			switch (field) {
 {{- range $field := .Field}}
 			case {{$field.Number}}:
-{{- if ne (jspbProtoTypeMethodName $field) "Message"}}
-				message.set{{pascalFieldName $field}}(reader.read{{jspbProtoTypeMethodName $field}}());
+{{- if not (isMessage $field)}}
+				const field{{$field.Number}} = reader.{{binaryReaderMethodName $field}}()
 {{- end -}}
-{{- if eq (jspbProtoTypeMethodName $field) "Message"}}
-				submsg = new {{fieldType $field $file}}();
-				reader.read{{jspbProtoTypeMethodName $field}}(submsg, {{fieldType $field $file}}.deserializeBinaryFromReader);
-				message.set{{pascalFieldName $field}}(submsg);
+{{- if (isMessage $field)}}
+				const field{{$field.Number}} = new {{fieldTypeName $field $file}}();
+				reader.{{binaryReaderMethodName $field}}(field{{$field.Number}}, {{fieldTypeName $field $file}}.deserializeBinaryFromReader);
+{{- end}}
+{{- if (isRepeated $field)}}
+				message.add{{pascalFieldName $field}}(field{{$field.Number}});
+{{- end}}
+{{- if not (isRepeated $field)}}
+				message.set{{pascalFieldName $field}}(field{{$field.Number}});
 {{- end}}
 				break;
 {{- end}}
@@ -260,85 +280,29 @@ func funcmap(depLookup map[string]Dependency) template.FuncMap {
 			}
 			panic(fmt.Sprintf("unknown message type: %s", typeName))
 		},
-		"fieldType": func(field *descriptor.FieldDescriptorProto, file *descriptor.FileDescriptorProto) string {
-			switch field.GetType() {
-			case descriptor.FieldDescriptorProto_TYPE_FLOAT:
-				fallthrough
-			case descriptor.FieldDescriptorProto_TYPE_INT32:
-				fallthrough
-			case descriptor.FieldDescriptorProto_TYPE_UINT32:
-				fallthrough
-			case descriptor.FieldDescriptorProto_TYPE_SINT32:
-				fallthrough
-			case descriptor.FieldDescriptorProto_TYPE_FIXED32:
-				fallthrough
-			case descriptor.FieldDescriptorProto_TYPE_SFIXED32:
-				fallthrough
-			case descriptor.FieldDescriptorProto_TYPE_INT64:
-				fallthrough
-			case descriptor.FieldDescriptorProto_TYPE_UINT64:
-				fallthrough
-			case descriptor.FieldDescriptorProto_TYPE_SINT64:
-				fallthrough
-			case descriptor.FieldDescriptorProto_TYPE_FIXED64:
-				fallthrough
-			case descriptor.FieldDescriptorProto_TYPE_SFIXED64:
-				fallthrough
-			case descriptor.FieldDescriptorProto_TYPE_DOUBLE:
-				return "number"
-			case descriptor.FieldDescriptorProto_TYPE_STRING:
-				return "string"
-			case descriptor.FieldDescriptorProto_TYPE_BOOL:
-				return "boolean"
-			case descriptor.FieldDescriptorProto_TYPE_BYTES:
-				return "Uint8Array | string"
-			case descriptor.FieldDescriptorProto_TYPE_ENUM:
-				return messageTypeToTS(field.GetTypeName(), file, depLookup)
-			case descriptor.FieldDescriptorProto_TYPE_MESSAGE:
-				return messageTypeToTS(field.GetTypeName(), file, depLookup)
-			}
-			log.Fatalf("unknown field type: %s", field.GetTypeName())
-			return ""
+		"fieldTypeName": func(field *descriptor.FieldDescriptorProto, file *descriptor.FileDescriptorProto) string {
+			return fieldTypeName(field, file, depLookup)
 		},
-		"jspbProtoTypeMethodName": func(field *descriptor.FieldDescriptorProto) string {
-			switch field.GetType() {
-			case descriptor.FieldDescriptorProto_TYPE_FLOAT:
-				return "Float"
-			case descriptor.FieldDescriptorProto_TYPE_INT32:
-				return "Int32"
-			case descriptor.FieldDescriptorProto_TYPE_UINT32:
-				return "Uint32"
-			case descriptor.FieldDescriptorProto_TYPE_SINT32:
-				return "SInt32"
-			case descriptor.FieldDescriptorProto_TYPE_FIXED32:
-				return "Fixed32"
-			case descriptor.FieldDescriptorProto_TYPE_SFIXED32:
-				return "SFixed32"
-			case descriptor.FieldDescriptorProto_TYPE_INT64:
-				return "Int64"
-			case descriptor.FieldDescriptorProto_TYPE_UINT64:
-				return "UInt64"
-			case descriptor.FieldDescriptorProto_TYPE_SINT64:
-				return "SInt64"
-			case descriptor.FieldDescriptorProto_TYPE_FIXED64:
-				return "Fixed64"
-			case descriptor.FieldDescriptorProto_TYPE_SFIXED64:
-				return "SFixed64"
-			case descriptor.FieldDescriptorProto_TYPE_DOUBLE:
-				return "Double"
-			case descriptor.FieldDescriptorProto_TYPE_STRING:
-				return "String"
-			case descriptor.FieldDescriptorProto_TYPE_BOOL:
-				return "Bool"
-			case descriptor.FieldDescriptorProto_TYPE_BYTES:
-				return "Bytes"
-			case descriptor.FieldDescriptorProto_TYPE_ENUM:
-				return "Enum"
-			case descriptor.FieldDescriptorProto_TYPE_MESSAGE:
-				return "Message"
+		"fieldType": func(field *descriptor.FieldDescriptorProto, file *descriptor.FileDescriptorProto) string {
+			if field.GetLabel() == descriptor.FieldDescriptorProto_LABEL_REPEATED {
+				return fmt.Sprintf("Array<%s>", fieldTypeName(field, file, depLookup))
 			}
-			log.Fatalf("unknown proto type: %s", field.GetTypeName())
-			return ""
+			return fieldTypeName(field, file, depLookup)
+		},
+		"isRepeated": func(field *descriptor.FieldDescriptorProto) bool {
+			return field.GetLabel() == descriptor.FieldDescriptorProto_LABEL_REPEATED
+		},
+		"isMessage": func(field *descriptor.FieldDescriptorProto) bool {
+			return field.GetType() == descriptor.FieldDescriptorProto_TYPE_MESSAGE
+		},
+		"binaryWriterMethodName": func(field *descriptor.FieldDescriptorProto) string {
+			if field.GetLabel() == descriptor.FieldDescriptorProto_LABEL_REPEATED {
+				return fmt.Sprintf("writeRepeated%s", jspbBinaryReaderWriterMethodName(field))
+			}
+			return fmt.Sprintf("write%s", jspbBinaryReaderWriterMethodName(field))
+		},
+		"binaryReaderMethodName": func(field *descriptor.FieldDescriptorProto) string {
+			return fmt.Sprintf("read%s", jspbBinaryReaderWriterMethodName(field))
 		},
 		"defaultValue": func(field *descriptor.FieldDescriptorProto) string {
 			valueOr := func(value string, fallback string) string {
@@ -347,9 +311,60 @@ func funcmap(depLookup map[string]Dependency) template.FuncMap {
 				}
 				return value
 			}
+			defaultValue := func() string {
+				switch field.GetType() {
+				case descriptor.FieldDescriptorProto_TYPE_FLOAT:
+					fallthrough
+				case descriptor.FieldDescriptorProto_TYPE_INT32:
+					fallthrough
+				case descriptor.FieldDescriptorProto_TYPE_UINT32:
+					fallthrough
+				case descriptor.FieldDescriptorProto_TYPE_SINT32:
+					fallthrough
+				case descriptor.FieldDescriptorProto_TYPE_FIXED32:
+					fallthrough
+				case descriptor.FieldDescriptorProto_TYPE_SFIXED32:
+					fallthrough
+				case descriptor.FieldDescriptorProto_TYPE_INT64:
+					fallthrough
+				case descriptor.FieldDescriptorProto_TYPE_UINT64:
+					fallthrough
+				case descriptor.FieldDescriptorProto_TYPE_SINT64:
+					fallthrough
+				case descriptor.FieldDescriptorProto_TYPE_FIXED64:
+					fallthrough
+				case descriptor.FieldDescriptorProto_TYPE_SFIXED64:
+					fallthrough
+				case descriptor.FieldDescriptorProto_TYPE_DOUBLE:
+					return valueOr(field.GetDefaultValue(), "0")
+				case descriptor.FieldDescriptorProto_TYPE_BOOL:
+					return valueOr(field.GetDefaultValue(), "false")
+				case descriptor.FieldDescriptorProto_TYPE_BYTES:
+					return fmt.Sprintf(`"%s"`, valueOr(field.GetDefaultValue(), ""))
+				case descriptor.FieldDescriptorProto_TYPE_STRING:
+					return fmt.Sprintf(`"%s"`, field.GetDefaultValue())
+				case descriptor.FieldDescriptorProto_TYPE_ENUM:
+					return valueOr(field.GetDefaultValue(), "0")
+				case descriptor.FieldDescriptorProto_TYPE_MESSAGE:
+					return valueOr(field.GetDefaultValue(), "null")
+				}
+				log.Fatalf("unknown default for proto field type: %s", field.GetType())
+				return ""
+			}
+			if field.GetLabel() == descriptor.FieldDescriptorProto_LABEL_REPEATED {
+				return fmt.Sprintf("[%s]", defaultValue())
+			}
+			return defaultValue()
+		},
+		"zeroCheck": func(field *descriptor.FieldDescriptorProto) string {
+			if field.GetLabel() == descriptor.FieldDescriptorProto_LABEL_REPEATED {
+				return ".length > 0"
+			}
 			switch field.GetType() {
 			case descriptor.FieldDescriptorProto_TYPE_FLOAT:
 				fallthrough
+			case descriptor.FieldDescriptorProto_TYPE_DOUBLE:
+				return " != 0.0"
 			case descriptor.FieldDescriptorProto_TYPE_INT32:
 				fallthrough
 			case descriptor.FieldDescriptorProto_TYPE_UINT32:
@@ -369,28 +384,38 @@ func funcmap(depLookup map[string]Dependency) template.FuncMap {
 			case descriptor.FieldDescriptorProto_TYPE_FIXED64:
 				fallthrough
 			case descriptor.FieldDescriptorProto_TYPE_SFIXED64:
-				fallthrough
-			case descriptor.FieldDescriptorProto_TYPE_DOUBLE:
-				return valueOr(field.GetDefaultValue(), "0")
+				return " != 0"
 			case descriptor.FieldDescriptorProto_TYPE_BOOL:
-				return valueOr(field.GetDefaultValue(), "false")
+				return " != false"
 			case descriptor.FieldDescriptorProto_TYPE_BYTES:
-				return fmt.Sprintf(`"%s"`, valueOr(field.GetDefaultValue(), ""))
+				fallthrough
 			case descriptor.FieldDescriptorProto_TYPE_STRING:
-				return fmt.Sprintf(`"%s"`, field.GetDefaultValue())
+				return ".length > 0"
 			case descriptor.FieldDescriptorProto_TYPE_ENUM:
-				return valueOr(field.GetDefaultValue(), "0")
+				return " != 0"
 			case descriptor.FieldDescriptorProto_TYPE_MESSAGE:
-				return valueOr(field.GetDefaultValue(), "null")
+				return " != null"
 			}
-			log.Fatalf("unknown default for proto field type: %s", field.GetType())
+			log.Fatalf("unknown zero check for proto field type: %s", field.GetType())
 			return ""
 		},
 		"jspbFieldSetter": func(field *descriptor.FieldDescriptorProto) string {
 			if field.GetType() == descriptor.FieldDescriptorProto_TYPE_MESSAGE {
+				if field.GetLabel() == descriptor.FieldDescriptorProto_LABEL_REPEATED {
+					return "setRepeatedWrapperField"
+				}
 				return "setWrapperField"
 			}
 			return "setField"
+		},
+		"jspbFieldAdder": func(field *descriptor.FieldDescriptorProto) string {
+			if field.GetLabel() != descriptor.FieldDescriptorProto_LABEL_REPEATED {
+				log.Fatal("jspbFieldAdder should only be used for repeated fields")
+			}
+			if field.GetType() == descriptor.FieldDescriptorProto_TYPE_MESSAGE {
+				return "addToRepeatedWrapperField"
+			}
+			return "addToRepeatedField"
 		},
 	}
 	return funcs
@@ -487,4 +512,86 @@ func NewDependencyLookupTable(req *plugin.CodeGeneratorRequest) map[string]Depen
 		}
 	}
 	return lookup
+}
+
+func fieldTypeName(field *descriptor.FieldDescriptorProto, file *descriptor.FileDescriptorProto, depLookup map[string]Dependency) string {
+	switch field.GetType() {
+	case descriptor.FieldDescriptorProto_TYPE_FLOAT:
+		fallthrough
+	case descriptor.FieldDescriptorProto_TYPE_INT32:
+		fallthrough
+	case descriptor.FieldDescriptorProto_TYPE_UINT32:
+		fallthrough
+	case descriptor.FieldDescriptorProto_TYPE_SINT32:
+		fallthrough
+	case descriptor.FieldDescriptorProto_TYPE_FIXED32:
+		fallthrough
+	case descriptor.FieldDescriptorProto_TYPE_SFIXED32:
+		fallthrough
+	case descriptor.FieldDescriptorProto_TYPE_INT64:
+		fallthrough
+	case descriptor.FieldDescriptorProto_TYPE_UINT64:
+		fallthrough
+	case descriptor.FieldDescriptorProto_TYPE_SINT64:
+		fallthrough
+	case descriptor.FieldDescriptorProto_TYPE_FIXED64:
+		fallthrough
+	case descriptor.FieldDescriptorProto_TYPE_SFIXED64:
+		fallthrough
+	case descriptor.FieldDescriptorProto_TYPE_DOUBLE:
+		return "number"
+	case descriptor.FieldDescriptorProto_TYPE_STRING:
+		return "string"
+	case descriptor.FieldDescriptorProto_TYPE_BOOL:
+		return "boolean"
+	case descriptor.FieldDescriptorProto_TYPE_BYTES:
+		return "Uint8Array | string"
+	case descriptor.FieldDescriptorProto_TYPE_ENUM:
+		fallthrough
+	case descriptor.FieldDescriptorProto_TYPE_MESSAGE:
+		return messageTypeToTS(field.GetTypeName(), file, depLookup)
+	}
+	log.Fatalf("unknown field type: %s", field.GetTypeName())
+	return ""
+}
+
+func jspbBinaryReaderWriterMethodName(field *descriptor.FieldDescriptorProto) string {
+	switch field.GetType() {
+	case descriptor.FieldDescriptorProto_TYPE_FLOAT:
+		return "Float"
+	case descriptor.FieldDescriptorProto_TYPE_INT32:
+		return "Int32"
+	case descriptor.FieldDescriptorProto_TYPE_UINT32:
+		return "Uint32"
+	case descriptor.FieldDescriptorProto_TYPE_SINT32:
+		return "SInt32"
+	case descriptor.FieldDescriptorProto_TYPE_FIXED32:
+		return "Fixed32"
+	case descriptor.FieldDescriptorProto_TYPE_SFIXED32:
+		return "SFixed32"
+	case descriptor.FieldDescriptorProto_TYPE_INT64:
+		return "Int64"
+	case descriptor.FieldDescriptorProto_TYPE_UINT64:
+		return "UInt64"
+	case descriptor.FieldDescriptorProto_TYPE_SINT64:
+		return "SInt64"
+	case descriptor.FieldDescriptorProto_TYPE_FIXED64:
+		return "Fixed64"
+	case descriptor.FieldDescriptorProto_TYPE_SFIXED64:
+		return "SFixed64"
+	case descriptor.FieldDescriptorProto_TYPE_DOUBLE:
+		return "Double"
+	case descriptor.FieldDescriptorProto_TYPE_STRING:
+		return "String"
+	case descriptor.FieldDescriptorProto_TYPE_BOOL:
+		return "Bool"
+	case descriptor.FieldDescriptorProto_TYPE_BYTES:
+		return "Bytes"
+	case descriptor.FieldDescriptorProto_TYPE_ENUM:
+		return "Enum"
+	case descriptor.FieldDescriptorProto_TYPE_MESSAGE:
+		return "Message"
+	}
+	log.Fatalf("unknown proto type: %s", field.GetTypeName())
+	return ""
 }
