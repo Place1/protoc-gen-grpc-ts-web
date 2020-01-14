@@ -3,7 +3,7 @@ build:
 
 test: build
 	mkdir -p out
-	protoc --ts-web_out=out --plugin=protoc-gen-ts-web ./e2e/example.proto
+	protoc --grpc-ts-web_out=out --plugin=protoc-gen-grpc-ts-web ./e2e/example.proto
 
 tmp:
 	mkdir -p out_other

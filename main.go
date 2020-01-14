@@ -5,7 +5,7 @@ import (
 	"log"
 	"os"
 
-	"github.com/place1/protoc-gen-ts-web/templates"
+	"github.com/place1/protoc-gen-grpc-ts-web/templates"
 
 	"github.com/golang/protobuf/proto"
 	plugin "github.com/golang/protobuf/protoc-gen-go/plugin"

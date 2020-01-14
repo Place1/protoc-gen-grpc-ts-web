@@ -1,4 +1,4 @@
-module github.com/place1/protoc-gen-ts-web
+module github.com/place1/protoc-gen-grpc-ts-web
 
 go 1.12
 
