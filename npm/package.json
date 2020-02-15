@@ -1,15 +1,20 @@
 {
   "name": "grpc-ts-web",
-  "version": "0.1.0",
+  "version": "0.1.5",
   "description": "",
   "bin": {
     "grpc-ts-web": "./command.js"
   },
-  "scripts": {},
+  "scripts": {
+    "prepublish": "cd .. && make release"
+  },
   "author": "James Batt",
   "license": "MIT",
   "dependencies": {
-    "commander": "^4.1.1"
+    "@types/google-protobuf": "^3.7.2",
+    "commander": "^4.1.1",
+    "google-protobuf": "^3.11.4",
+    "grpc-web": "^1.0.7"
   },
   "files": [
     "command.js",

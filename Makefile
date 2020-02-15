@@ -4,13 +4,14 @@ PLATFORMS=darwin linux windows
 ARCHITECTURES=amd64
 
 build:
-	go build .
+	go build -o $(OUT)/$(BINARY) .
 
-release:
+release: clean
 	mkdir -p $(OUT)
 	$(foreach GOOS, $(PLATFORMS),\
 	$(foreach GOARCH, $(ARCHITECTURES), $(shell export GOOS=$(GOOS); export GOARCH=$(GOARCH); go build -o $(OUT)/$(BINARY)-$(GOOS)-$(GOARCH))))
-	cp -r bin npm/bin
+	rm -r npm/bin/ || true
+	cp -r bin/ npm/bin/
 
 test: build
 	mkdir -p $(OUT)
@@ -18,3 +19,6 @@ test: build
 
 clean:
 	rm -r $(OUT) || true
+
+publish: release
+	cd npm && npm publish
