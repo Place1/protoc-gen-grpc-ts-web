@@ -1,0 +1,18 @@
+{
+  "name": "grpc-ts-web",
+  "version": "0.1.0",
+  "description": "",
+  "bin": {
+    "grpc-ts-web": "./command.js"
+  },
+  "scripts": {},
+  "author": "James Batt",
+  "license": "MIT",
+  "dependencies": {
+    "commander": "^4.1.1"
+  },
+  "files": [
+    "command.js",
+    "bin/*"
+  ]
+}

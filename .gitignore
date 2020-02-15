@@ -3,3 +3,4 @@
 out/
 out_other/
 protoc-gen-*
+bin/

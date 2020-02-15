@@ -1,14 +1,20 @@
+OUT="bin"
+BINARY="protoc-gen-grpc-ts-web"
+PLATFORMS=darwin linux windows
+ARCHITECTURES=amd64
+
 build:
 	go build .
 
-test: build
-	mkdir -p out
-	protoc --grpc-ts-web_out=out --plugin=protoc-gen-grpc-ts-web ./e2e/example.proto
+release:
+	mkdir -p $(OUT)
+	$(foreach GOOS, $(PLATFORMS),\
+	$(foreach GOARCH, $(ARCHITECTURES), $(shell export GOOS=$(GOOS); export GOARCH=$(GOARCH); go build -o $(OUT)/$(BINARY)-$(GOOS)-$(GOARCH))))
+	cp -r bin npm/bin
 
-tmp:
-	mkdir -p out_other
-	protoc --js_out=import_style=commonjs:out_other ./e2e/example.proto
+test: build
+	mkdir -p $(OUT)
+	protoc --grpc-ts-web_out=$(OUT) --plugin=protoc-gen-grpc-ts-web ./e2e/example.proto
 
 clean:
-	rm -r out || true
-	rm -r out_other || true
+	rm -r $(OUT) || true
