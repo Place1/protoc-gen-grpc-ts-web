@@ -1,12 +1,9 @@
 {
   "name": "grpc-ts-web",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "description": "",
   "bin": {
     "grpc-ts-web": "./command.js"
-  },
-  "scripts": {
-    "prepublish": "cd .. && make release"
   },
   "author": "James Batt",
   "license": "MIT",
