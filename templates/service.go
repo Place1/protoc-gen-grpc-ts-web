@@ -116,22 +116,30 @@ export enum {{$enum.GetName}} {
 	{{$value.GetName}} = {{$value.GetNumber}},
 {{- end}}
 }
-{{- end}}
+{{end}}
 
-{{range $message := .MessageType -}}
+{{range $message := .MessageType}}
 export declare namespace {{messageName $message $file}} {
 	export type AsObject = {
 {{- range $field := .Field}}
-		{{camelFieldName $field}}{{if isMessage $field}}?{{end}}: {{fieldObjectType $field $file}},
+		{{camelFieldName $field}}{{if isOptional $field}}?{{end}}: {{fieldObjectType $field $file}},
 {{- end}}
 	}
 }
 
 export class {{messageName $message $file}} extends jspb.Message {
 
-	constructor() {
+	private static repeatedFields_ = [
+		{{range $field := .Field -}}
+		{{- if (isRepeated $field) -}}
+		{{$field.GetNumber}},
+		{{- end -}}
+		{{- end}}
+	];
+
+	constructor(data?: jspb.Message.MessageArray) {
 		super();
-		jspb.Message.initialize(this, [], 0, -1, [], null);
+		jspb.Message.initialize(this, data || [], 0, -1, {{messageName $message $file}}.repeatedFields_, null);
 	}
 
 {{range $field := .Field}}
@@ -144,7 +152,7 @@ export class {{messageName $message $file}} extends jspb.Message {
 		{{- end}}
 	}
 
-	set{{pascalFieldName $field}}(value{{if isMessage $field}}?{{end}}: {{fieldType $field $file}}): void {
+	set{{pascalFieldName $field}}(value{{if isOptional $field}}?{{end}}: {{fieldType $field $file}}): void {
 		(jspb.Message as any).{{jspbFieldSetter $field}}(this, {{$field.Number}}, value);
 	}
 
@@ -171,12 +179,17 @@ export class {{messageName $message $file}} extends jspb.Message {
 		let f: any;
 		return {
 {{- range $field := .Field}}
-			{{if (isMessage $field) -}}
+			{{- if isRepeated $field}}
+			{{camelFieldName $field}}: this.get{{pascalFieldName $field}}().map((item) => item.toObject()),
+			{{- end -}}
+			{{- if not (isRepeated $field) -}}
+			{{if isMessage $field -}}
 			{{camelFieldName $field}}: (f = this.get{{pascalFieldName $field}}()) && f.toObject(),
 			{{- end -}}
 			{{- if not (isMessage $field) -}}
 			{{camelFieldName $field}}: this.get{{pascalFieldName $field}}(),
 			{{- end}}
+			{{end}}
 {{- end}}
 		};
 	}
@@ -335,6 +348,15 @@ func funcmap(depLookup map[string]Dependency) template.FuncMap {
 		},
 		"isMessage": func(field *descriptor.FieldDescriptorProto) bool {
 			return field.GetType() == descriptor.FieldDescriptorProto_TYPE_MESSAGE
+		},
+		"isOptional": func(field *descriptor.FieldDescriptorProto) bool {
+			if field.GetLabel() == descriptor.FieldDescriptorProto_LABEL_REPEATED {
+				return false
+			}
+			if field.GetType() == descriptor.FieldDescriptorProto_TYPE_MESSAGE {
+				return true
+			}
+			return false
 		},
 		"binaryWriterMethodName": func(field *descriptor.FieldDescriptorProto) string {
 			if field.GetLabel() == descriptor.FieldDescriptorProto_LABEL_REPEATED {

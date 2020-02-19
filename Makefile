@@ -11,7 +11,7 @@ release: clean
 	$(foreach GOOS, $(PLATFORMS),\
 	$(foreach GOARCH, $(ARCHITECTURES), $(shell export GOOS=$(GOOS); export GOARCH=$(GOARCH); go build -o $(OUT)/$(BINARY)-$(GOOS)-$(GOARCH))))
 	rm -r npm/bin/ || true
-	cp -r bin/ npm/bin/
+	cp -r $(OUT)/ npm/$(OUT)/
 
 test: build
 	mkdir -p $(OUT)
@@ -19,6 +19,7 @@ test: build
 
 clean:
 	rm -r $(OUT) || true
+	rm -rf npm/$(OUT)
 
-publish: release
+publish:
 	cd npm && npm publish
