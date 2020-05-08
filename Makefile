@@ -1,5 +1,5 @@
-OUT="bin"
-BINARY="protoc-gen-grpc-ts-web"
+OUT=bin
+BINARY=protoc-gen-grpc-ts-web
 PLATFORMS=darwin linux windows
 ARCHITECTURES=amd64
 
@@ -18,7 +18,7 @@ release: clean
 test: build
 	echo "running test"
 	mkdir -p $(OUT)
-	protoc --grpc-ts-web_out=$(OUT) --plugin=protoc-gen-grpc-ts-web ./e2e/example.proto
+	protoc --grpc-ts-web_out=$(OUT) --plugin=$(OUT)/protoc-gen-grpc-ts-web ./e2e/example.proto
 
 clean:
 	echo "running clean"

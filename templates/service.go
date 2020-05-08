@@ -180,7 +180,7 @@ export class {{messageName $message $file}} extends jspb.Message {
 		return {
 {{- range $field := .Field}}
 			{{- if isRepeated $field}}
-			{{camelFieldName $field}}: this.get{{pascalFieldName $field}}().map((item) => item.toObject()),
+			{{camelFieldName $field}}: this.get{{pascalFieldName $field}}(){{if isMessage $field}}.map((item) => item.toObject()){{end}},
 			{{- end -}}
 			{{- if not (isRepeated $field) -}}
 			{{if isMessage $field -}}
@@ -258,7 +258,9 @@ function {{$dep.Message.GetName}}FromObject(obj: {{messageTypeToTS $dep.TypeName
 {{- range $field := .Message.Field}}
 	{{- if isRepeated $field}}
 	(obj.{{camelFieldName $field}} || [])
+		{{- if isMessage $field}}
 		.map((item) => {{stripPackage $field.TypeName}}FromObject(item))
+		{{- end}}
 		.forEach((item) => message.add{{pascalFieldName $field}}(item));
 	{{- end -}}
 	{{- if not (isRepeated $field)}}
