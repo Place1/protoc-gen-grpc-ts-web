@@ -25,6 +25,6 @@ clean:
 	rm -r $(OUT) || true
 	rm -rf npm/$(OUT) || true
 
-publish:
+publish: release
 	echo "running publish"
 	cd npm && npm publish
