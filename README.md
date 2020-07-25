@@ -20,6 +20,7 @@ If you've installed the npm package you can run the following command to generat
 a Typescript GRPC client from a set of proto files.
 
 ```bash
+# using the npm command
 ./node_modules/.bin/grpc-ts-web -o ./out ./path/to/protos/**/*.proto
 ```
 
