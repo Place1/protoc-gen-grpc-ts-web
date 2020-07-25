@@ -3,14 +3,14 @@ syntax = "proto3";
 package example;
 
 import "google/protobuf/empty.proto";
+import "google/protobuf/wrappers.proto";
 import "google/protobuf/timestamp.proto";
 import "google/protobuf/duration.proto";
 
 service UserService {
-  rpc AddUser(User) returns (google.protobuf.Empty) {}
-  rpc ListUsers(ListUsersRequest) returns (stream User) {}
-  rpc ListUsersByRole(UserRole) returns (stream User) {}
-  rpc UpdateUser(google.protobuf.Timestamp) returns (User) {}
+  rpc AddUser(AddUserReq) returns (User) {}
+  rpc ListUsers(ListUsersReq) returns (stream User) {}
+  rpc Since(google.protobuf.Timestamp) returns (google.protobuf.Empty) {}
 }
 
 enum Role {
@@ -19,22 +19,22 @@ enum Role {
   ADMIN = 2;
 }
 
-message User {
-  uint32 id = 1;
-  Role role = 2;
-  google.protobuf.Timestamp create_date = 3;
+message AddUserReq {
+  string name = 1;
 }
 
-message UserRole {
-  Role role = 1;
+message User {
+  string id = 1;
+  string name = 2;
+  Role role = 3;
+  google.protobuf.Timestamp create_date = 4;
 }
 
 message UpdateUserRequest {
-  User user = 1;
+  google.protobuf.StringValue name = 1;
 }
 
-message ListUsersRequest {
+message ListUsersReq {
   google.protobuf.Timestamp created_since = 1;
   google.protobuf.Duration older_than = 2;
-  string message = 3;
 }
