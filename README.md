@@ -2,11 +2,14 @@
 
 A protoc plugin for generating browser compatible GRPC clients in Typescript.
 
-Why use this plugin instead of [protoc-gen-grpc-web](https://github.com/grpc/grpc-web)? This plugin improves on ergonomics in a number of ways:
+Why use this plugin instead of [protoc-gen-grpc-web](https://github.com/grpc/grpc-web)?
 
-- emits typescript files only (no .js or .d.ts files)
-- unary methods based on Promises and JSON objects rather than callbacks and message classes
-- uses the same `google-protobuf` runtime library and is compatible with it's well-known types
+This plugin improves the ergonomics of the generated client code in a number of ways:
+
+- emits typescript files only (no .js or .d.ts files).
+- unary methods use Promises rather than callbacks to support async/await.
+- methods accept and return simple JSON objects instead of proto Message instances.
+- uses the same `google-protobuf` runtime library and is compatible with it's well-known types.
 
 ## Installation
 
