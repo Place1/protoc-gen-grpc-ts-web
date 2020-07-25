@@ -17,8 +17,7 @@ release: clean
 
 test: build
 	echo "running test"
-	mkdir -p $(OUT)
-	protoc --grpc-ts-web_out=$(OUT) --plugin=$(OUT)/protoc-gen-grpc-ts-web ./e2e/example.proto
+	protoc --plugin=$(OUT)/protoc-gen-grpc-ts-web --grpc-ts-web_out=./ ./example/example.proto
 
 clean:
 	echo "running clean"
