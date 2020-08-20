@@ -38,7 +38,10 @@ export class {{.Name}} {
 		format: 'text',
 	});
 {{range $method := .Method}}
-	private methodInfo{{$method.Name}} = new grpcWeb.AbstractClientBase.MethodInfo(
+	private methodInfo{{$method.Name}} = new grpcWeb.MethodDescriptor<{{requestMessage $method $file}}, {{responseMessage $method $file}}>(
+		"{{$method.Name}}",
+		null,
+		{{requestMessage $method $file}},
 		{{responseMessage $method $file}},
 		(req: {{requestMessage $method $file}}) => req.serializeBinary(),
 		{{responseMessage $method $file}}.deserializeBinary
