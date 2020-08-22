@@ -16,19 +16,28 @@ export class UserService {
 		format: 'text',
 	});
 
-	private methodInfoAddUser = new grpcWeb.AbstractClientBase.MethodInfo(
+	private methodInfoAddUser = new grpcWeb.MethodDescriptor<AddUserReq, User>(
+		"AddUser",
+		null,
+		AddUserReq,
 		User,
 		(req: AddUserReq) => req.serializeBinary(),
 		User.deserializeBinary
 	);
 
-	private methodInfoListUsers = new grpcWeb.AbstractClientBase.MethodInfo(
+	private methodInfoListUsers = new grpcWeb.MethodDescriptor<ListUsersReq, User>(
+		"ListUsers",
+		null,
+		ListUsersReq,
 		User,
 		(req: ListUsersReq) => req.serializeBinary(),
 		User.deserializeBinary
 	);
 
-	private methodInfoSince = new grpcWeb.AbstractClientBase.MethodInfo(
+	private methodInfoSince = new grpcWeb.MethodDescriptor<googleProtobufTimestamp.Timestamp, googleProtobufEmpty.Empty>(
+		"Since",
+		null,
+		googleProtobufTimestamp.Timestamp,
 		googleProtobufEmpty.Empty,
 		(req: googleProtobufTimestamp.Timestamp) => req.serializeBinary(),
 		googleProtobufEmpty.Empty.deserializeBinary
@@ -127,7 +136,7 @@ export declare namespace AddUserReq {
 export class AddUserReq extends jspb.Message {
 
 	private static repeatedFields_ = [
-
+		
 	];
 
 	constructor(data?: jspb.Message.MessageArray) {
@@ -153,7 +162,7 @@ export class AddUserReq extends jspb.Message {
 	toObject(): AddUserReq.AsObject {
 		let f: any;
 		return {name: this.getName(),
-
+			
 		};
 	}
 
@@ -202,7 +211,7 @@ export declare namespace User {
 export class User extends jspb.Message {
 
 	private static repeatedFields_ = [
-
+		
 	];
 
 	constructor(data?: jspb.Message.MessageArray) {
@@ -255,7 +264,7 @@ export class User extends jspb.Message {
 			name: this.getName(),
 			role: this.getRole(),
 			createDate: (f = this.getCreateDate()) && f.toObject(),
-
+			
 		};
 	}
 
@@ -326,7 +335,7 @@ export declare namespace UpdateUserRequest {
 export class UpdateUserRequest extends jspb.Message {
 
 	private static repeatedFields_ = [
-
+		
 	];
 
 	constructor(data?: jspb.Message.MessageArray) {
@@ -352,7 +361,7 @@ export class UpdateUserRequest extends jspb.Message {
 	toObject(): UpdateUserRequest.AsObject {
 		let f: any;
 		return {name: (f = this.getName()) && f.toObject(),
-
+			
 		};
 	}
 
@@ -400,7 +409,7 @@ export declare namespace ListUsersReq {
 export class ListUsersReq extends jspb.Message {
 
 	private static repeatedFields_ = [
-
+		
 	];
 
 	constructor(data?: jspb.Message.MessageArray) {
@@ -435,7 +444,7 @@ export class ListUsersReq extends jspb.Message {
 		let f: any;
 		return {createdSince: (f = this.getCreatedSince()) && f.toObject(),
 			olderThan: (f = this.getOlderThan()) && f.toObject(),
-
+			
 		};
 	}
 
