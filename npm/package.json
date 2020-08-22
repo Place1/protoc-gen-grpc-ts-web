@@ -1,6 +1,6 @@
 {
   "name": "grpc-ts-web",
-  "version": "0.1.7",
+  "version": "0.1.8",
   "description": "",
   "bin": {
     "grpc-ts-web": "./command.js"
