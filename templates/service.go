@@ -77,10 +77,7 @@ export class {{.Name}} {
 {{- if not $method.ClientStreaming -}}
 {{- if $method.ServerStreaming}}
 	{{methodName $method}}(req: {{requestObject $method $file}}, metadata?: grpcWeb.Metadata) {
-		const message = new {{requestMessage $method $file}}();
-{{- range $field := (typeToMessageProto $method.GetInputType).GetField}}
-		message.set{{pascalFieldName $field}}(req.{{camelFieldName $field}});
-{{- end}}
+		const message = {{requestMessage $method $file}}FromObject(req);
 		const stream = this.client_.serverStreaming(
 			this.hostname + '/{{$package}}.{{$service.GetName}}/{{$method.GetName}}',
 			message,
