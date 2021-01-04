@@ -222,17 +222,27 @@ export class {{messageName $message $file}} extends jspb.Message {
 			switch (field) {
 {{- range $field := .Field}}
 			case {{$field.Number}}:
-{{- if not (isMessage $field)}}
-				const field{{$field.Number}} = reader.{{binaryReaderMethodName $field}}()
-{{- end -}}
 {{- if (isMessage $field)}}
 				const field{{$field.Number}} = new {{fieldTypeName $field $file}}();
 				reader.{{binaryReaderMethodName $field}}(field{{$field.Number}}, {{fieldTypeName $field $file}}.deserializeBinaryFromReader);
-{{- end}}
+{{- else}}
 {{- if (isRepeated $field)}}
+				const fieldValues{{$field.Number}} = reader.isDelimited()
+					? reader.{{binaryReaderMethodNamePacked $field}}()
+					: [reader.{{binaryReaderMethodName $field}}()];
+{{- else}}
+				const field{{$field.Number}} = reader.{{binaryReaderMethodName $field}}()
+{{- end -}}
+{{- end -}}
+{{- if (isRepeated $field)}}
+{{- if (isMessage $field)}}
 				message.add{{pascalFieldName $field}}(field{{$field.Number}});
-{{- end}}
-{{- if not (isRepeated $field)}}
+{{- else}}
+				for (const value of fieldValues{{$field.Number}}) {
+					message.add{{pascalFieldName $field}}(value);
+				}
+{{- end -}}
+{{- else}}
 				message.set{{pascalFieldName $field}}(field{{$field.Number}});
 {{- end}}
 				break;
@@ -368,6 +378,9 @@ func funcmap(depLookup map[string]Dependency) template.FuncMap {
 		},
 		"binaryReaderMethodName": func(field *descriptor.FieldDescriptorProto) string {
 			return fmt.Sprintf("read%s", jspbBinaryReaderWriterMethodName(field))
+		},
+		"binaryReaderMethodNamePacked": func(field *descriptor.FieldDescriptorProto) string {
+			return fmt.Sprintf("readPacked%s", jspbBinaryReaderWriterMethodName(field))
 		},
 		"defaultValue": func(field *descriptor.FieldDescriptorProto) string {
 			valueOr := func(value string, fallback string) string {
