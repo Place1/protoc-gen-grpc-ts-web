@@ -68,9 +68,7 @@ export class UserService {
 	}
 
 	listUsers(req: ListUsersReq.AsObject, metadata?: grpcWeb.Metadata) {
-		const message = new ListUsersReq();
-		message.setCreatedSince(req.createdSince);
-		message.setOlderThan(req.olderThan);
+		const message = ListUsersReqFromObject(req);
 		const stream = this.client_.serverStreaming(
 			this.hostname + '/example.UserService/ListUsers',
 			message,
@@ -100,7 +98,7 @@ export class UserService {
 
 	since(req: googleProtobufTimestamp.Timestamp.AsObject, metadata?: grpcWeb.Metadata): Promise<googleProtobufEmpty.Empty.AsObject> {
 		return new Promise((resolve, reject) => {
-			const message = googleProtobufTimestamp.TimestampFromObject(req);
+			const message = TimestampFromObject(req);
 			this.client_.rpcCall(
 				this.hostname + '/example.UserService/Since',
 				message,
@@ -203,7 +201,7 @@ export declare namespace User {
 	export type AsObject = {
 		id: string,
 		name: string,
-		role: Role,
+		roles: Array<Role>,
 		createDate?: googleProtobufTimestamp.Timestamp.AsObject,
 	}
 }
@@ -211,7 +209,7 @@ export declare namespace User {
 export class User extends jspb.Message {
 
 	private static repeatedFields_ = [
-		
+		3,
 	];
 
 	constructor(data?: jspb.Message.MessageArray) {
@@ -236,12 +234,16 @@ export class User extends jspb.Message {
 		(jspb.Message as any).setProto3StringField(this, 2, value);
 	}
 
-	getRole(): Role {
-		return jspb.Message.getFieldWithDefault(this, 3, 0);
+	getRoles(): Array<Role> {
+		return jspb.Message.getFieldWithDefault(this, 3, [0]);
 	}
 
-	setRole(value: Role): void {
+	setRoles(value: Array<Role>): void {
 		(jspb.Message as any).setProto3EnumField(this, 3, value);
+	}
+	
+	addRoles(value: Role, index?: number): void {
+		return jspb.Message.addToRepeatedField(this, 3, value, index);
 	}
 
 	getCreateDate(): googleProtobufTimestamp.Timestamp {
@@ -262,8 +264,8 @@ export class User extends jspb.Message {
 		let f: any;
 		return {id: this.getId(),
 			name: this.getName(),
-			role: this.getRole(),
-			createDate: (f = this.getCreateDate()) && f.toObject(),
+			
+			roles: this.getRoles(),createDate: (f = this.getCreateDate()) && f.toObject(),
 			
 		};
 	}
@@ -277,9 +279,9 @@ export class User extends jspb.Message {
 		if (field2.length > 0) {
 			writer.writeString(2, field2);
 		}
-		const field3 = message.getRole();
-		if (field3 != 0) {
-			writer.writeEnum(3, field3);
+		const field3 = message.getRoles();
+		if (field3.length > 0) {
+			writer.writeRepeatedEnum(3, field3);
 		}
 		const field4 = message.getCreateDate();
 		if (field4 != null) {
@@ -309,8 +311,13 @@ export class User extends jspb.Message {
 				message.setName(field2);
 				break;
 			case 3:
-				const field3 = reader.readEnum()
-				message.setRole(field3);
+				// @ts-ignore
+				const fieldValues3 = reader.isDelimited()
+					? reader.readPackedEnum()
+					: [reader.readEnum()];
+				for (const value of fieldValues3) {
+					message.addRoles(value);
+				}
 				break;
 			case 4:
 				const field4 = new googleProtobufTimestamp.Timestamp();
@@ -509,7 +516,8 @@ function UserFromObject(obj: User.AsObject | undefined): User | undefined {
 	const message = new User();
 	message.setId(obj.id);
 	message.setName(obj.name);
-	message.setRole(obj.role);
+	(obj.roles || [])
+		.forEach((item) => message.addRoles(item));
 	message.setCreateDate(TimestampFromObject(obj.createDate));
 	return message;
 }

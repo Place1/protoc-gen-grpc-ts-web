@@ -56,7 +56,7 @@ export class {{.Name}} {
 {{- if not $method.ServerStreaming}}
 	{{methodName $method}}(req: {{requestObject $method $file}}, metadata?: grpcWeb.Metadata): Promise<{{responseObject $method $file}}> {
 		return new Promise((resolve, reject) => {
-			const message = {{requestMessage $method $file}}FromObject(req);
+			const message = {{requestMessage $method $file | stripPackage}}FromObject(req);
 			this.client_.rpcCall(
 				this.hostname + '/{{$package}}.{{$service.GetName}}/{{$method.GetName}}',
 				message,
@@ -227,6 +227,7 @@ export class {{messageName $message $file}} extends jspb.Message {
 				reader.{{binaryReaderMethodName $field}}(field{{$field.Number}}, {{fieldTypeName $field $file}}.deserializeBinaryFromReader);
 {{- else}}
 {{- if (isRepeated $field)}}
+				// @ts-ignore
 				const fieldValues{{$field.Number}} = reader.isDelimited()
 					? reader.{{binaryReaderMethodNamePacked $field}}()
 					: [reader.{{binaryReaderMethodName $field}}()];
