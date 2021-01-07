@@ -311,7 +311,8 @@ export class User extends jspb.Message {
 				message.setName(field2);
 				break;
 			case 3:
-				// @ts-ignore
+				// @ts-ignore Property 'isDelimited' does not exist on type 'BinaryReader'
+        // The property does exist but @types/google-protobuf is out of date.
 				const fieldValues3 = reader.isDelimited()
 					? reader.readPackedEnum()
 					: [reader.readEnum()];

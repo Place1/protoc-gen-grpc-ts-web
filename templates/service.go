@@ -227,7 +227,8 @@ export class {{messageName $message $file}} extends jspb.Message {
 				reader.{{binaryReaderMethodName $field}}(field{{$field.Number}}, {{fieldTypeName $field $file}}.deserializeBinaryFromReader);
 {{- else}}
 {{- if (isRepeated $field)}}
-				// @ts-ignore
+				// @ts-ignore Property 'isDelimited' does not exist on type 'BinaryReader'
+        // The property does exist but @types/google-protobuf is out of date.
 				const fieldValues{{$field.Number}} = reader.isDelimited()
 					? reader.{{binaryReaderMethodNamePacked $field}}()
 					: [reader.{{binaryReaderMethodName $field}}()];
