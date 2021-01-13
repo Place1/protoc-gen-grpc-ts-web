@@ -202,6 +202,7 @@ export declare namespace User {
 		id: string,
 		name: string,
 		roles: Array<Role>,
+		names: Array<string>,
 		createDate?: googleProtobufTimestamp.Timestamp.AsObject,
 	}
 }
@@ -209,7 +210,7 @@ export declare namespace User {
 export class User extends jspb.Message {
 
 	private static repeatedFields_ = [
-		3,
+		3,4,
 	];
 
 	constructor(data?: jspb.Message.MessageArray) {
@@ -246,12 +247,24 @@ export class User extends jspb.Message {
 		return jspb.Message.addToRepeatedField(this, 3, value, index);
 	}
 
+	getNames(): Array<string> {
+		return jspb.Message.getFieldWithDefault(this, 4, [""]);
+	}
+
+	setNames(value: Array<string>): void {
+		(jspb.Message as any).setProto3StringField(this, 4, value);
+	}
+	
+	addNames(value: string, index?: number): void {
+		return jspb.Message.addToRepeatedField(this, 4, value, index);
+	}
+
 	getCreateDate(): googleProtobufTimestamp.Timestamp {
-		return jspb.Message.getWrapperField(this, googleProtobufTimestamp.Timestamp, 4);
+		return jspb.Message.getWrapperField(this, googleProtobufTimestamp.Timestamp, 5);
 	}
 
 	setCreateDate(value?: googleProtobufTimestamp.Timestamp): void {
-		(jspb.Message as any).setWrapperField(this, 4, value);
+		(jspb.Message as any).setWrapperField(this, 5, value);
 	}
 
 	serializeBinary(): Uint8Array {
@@ -265,7 +278,8 @@ export class User extends jspb.Message {
 		return {id: this.getId(),
 			name: this.getName(),
 			
-			roles: this.getRoles(),createDate: (f = this.getCreateDate()) && f.toObject(),
+			roles: this.getRoles(),
+			names: this.getNames(),createDate: (f = this.getCreateDate()) && f.toObject(),
 			
 		};
 	}
@@ -283,9 +297,13 @@ export class User extends jspb.Message {
 		if (field3.length > 0) {
 			writer.writeRepeatedEnum(3, field3);
 		}
-		const field4 = message.getCreateDate();
-		if (field4 != null) {
-			writer.writeMessage(4, field4, googleProtobufTimestamp.Timestamp.serializeBinaryToWriter);
+		const field4 = message.getNames();
+		if (field4.length > 0) {
+			writer.writeRepeatedString(4, field4);
+		}
+		const field5 = message.getCreateDate();
+		if (field5 != null) {
+			writer.writeMessage(5, field5, googleProtobufTimestamp.Timestamp.serializeBinaryToWriter);
 		}
 	}
 
@@ -312,7 +330,7 @@ export class User extends jspb.Message {
 				break;
 			case 3:
 				// @ts-ignore Property 'isDelimited' does not exist on type 'BinaryReader'
-        // The property does exist but @types/google-protobuf is out of date.
+				// The property does exist but @types/google-protobuf is out of date.
 				const fieldValues3 = reader.isDelimited()
 					? reader.readPackedEnum()
 					: [reader.readEnum()];
@@ -321,9 +339,13 @@ export class User extends jspb.Message {
 				}
 				break;
 			case 4:
-				const field4 = new googleProtobufTimestamp.Timestamp();
-				reader.readMessage(field4, googleProtobufTimestamp.Timestamp.deserializeBinaryFromReader);
-				message.setCreateDate(field4);
+				const field4 = reader.readString()
+				message.addNames(field4);
+				break;
+			case 5:
+				const field5 = new googleProtobufTimestamp.Timestamp();
+				reader.readMessage(field5, googleProtobufTimestamp.Timestamp.deserializeBinaryFromReader);
+				message.setCreateDate(field5);
 				break;
 			default:
 				reader.skipField();
@@ -519,6 +541,8 @@ function UserFromObject(obj: User.AsObject | undefined): User | undefined {
 	message.setName(obj.name);
 	(obj.roles || [])
 		.forEach((item) => message.addRoles(item));
+	(obj.names || [])
+		.forEach((item) => message.addNames(item));
 	message.setCreateDate(TimestampFromObject(obj.createDate));
 	return message;
 }

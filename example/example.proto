@@ -27,7 +27,8 @@ message User {
   string id = 1;
   string name = 2;
   repeated Role roles = 3;
-  google.protobuf.Timestamp create_date = 4;
+  repeated string names = 4;
+  google.protobuf.Timestamp create_date = 5;
 }
 
 message UpdateUserRequest {

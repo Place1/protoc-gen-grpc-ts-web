@@ -226,9 +226,9 @@ export class {{messageName $message $file}} extends jspb.Message {
 				const field{{$field.Number}} = new {{fieldTypeName $field $file}}();
 				reader.{{binaryReaderMethodName $field}}(field{{$field.Number}}, {{fieldTypeName $field $file}}.deserializeBinaryFromReader);
 {{- else}}
-{{- if (isRepeated $field)}}
+{{- if and (isRepeated $field) (not (isString $field))}}
 				// @ts-ignore Property 'isDelimited' does not exist on type 'BinaryReader'
-        // The property does exist but @types/google-protobuf is out of date.
+				// The property does exist but @types/google-protobuf is out of date.
 				const fieldValues{{$field.Number}} = reader.isDelimited()
 					? reader.{{binaryReaderMethodNamePacked $field}}()
 					: [reader.{{binaryReaderMethodName $field}}()];
@@ -237,7 +237,7 @@ export class {{messageName $message $file}} extends jspb.Message {
 {{- end -}}
 {{- end -}}
 {{- if (isRepeated $field)}}
-{{- if (isMessage $field)}}
+{{- if or (isMessage $field) (isString $field)}}
 				message.add{{pascalFieldName $field}}(field{{$field.Number}});
 {{- else}}
 				for (const value of fieldValues{{$field.Number}}) {
@@ -371,6 +371,9 @@ func funcmap(depLookup map[string]Dependency) template.FuncMap {
 				return true
 			}
 			return false
+		},
+		"isString": func(field *descriptor.FieldDescriptorProto) bool {
+			return field.GetType() == descriptor.FieldDescriptorProto_TYPE_STRING
 		},
 		"binaryWriterMethodName": func(field *descriptor.FieldDescriptorProto) string {
 			if field.GetLabel() == descriptor.FieldDescriptorProto_LABEL_REPEATED {

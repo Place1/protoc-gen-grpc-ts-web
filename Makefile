@@ -19,6 +19,11 @@ test: build
 	echo "running test"
 	protoc --plugin=$(OUT)/protoc-gen-grpc-ts-web --grpc-ts-web_out=./ ./example/example.proto
 
+test-js:
+	rm -r out || true
+	mkdir -p out
+	protoc -I ./example --js_out=out ./example/example.proto
+
 clean:
 	echo "running clean"
 	rm -r $(OUT) || true
