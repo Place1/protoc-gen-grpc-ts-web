@@ -22,7 +22,7 @@ test: build
 test-js:
 	rm -r out || true
 	mkdir -p out
-	protoc -I ./example --js_out=out ./example/example.proto
+	protoc -I ./example --js_out=out --grpc-web_out=import_style=commonjs+dts,mode=grpcwebtext:out ./example/example.proto
 
 clean:
 	echo "running clean"
@@ -32,3 +32,8 @@ clean:
 publish: release
 	echo "running publish"
 	cd npm && npm publish
+
+dump:
+	# install with the below go get command
+	# go get -u sourcegraph.com/sourcegraph/prototools/cmd/protoc-gen-dump
+	protoc --dump_out=out=code-generator-request.bin:./ ./example/example.proto

@@ -143,8 +143,7 @@ export class AddUserReq extends jspb.Message {
 	}
 
 
-	getName(): string {
-		return jspb.Message.getFieldWithDefault(this, 1, "");
+	getName(): string {return jspb.Message.getFieldWithDefault(this, 1, "");
 	}
 
 	setName(value: string): void {
@@ -159,8 +158,8 @@ export class AddUserReq extends jspb.Message {
 
 	toObject(): AddUserReq.AsObject {
 		let f: any;
-		return {name: this.getName(),
-			
+		return {
+			name: this.getName(),
 		};
 	}
 
@@ -204,13 +203,15 @@ export declare namespace User {
 		roles: Array<Role>,
 		names: Array<string>,
 		createDate?: googleProtobufTimestamp.Timestamp.AsObject,
+		labelsMap: Array<[string, string]>,
+		moreLabelsMap: Array<[string, googleProtobufWrappers.StringValue.AsObject]>,
 	}
 }
 
 export class User extends jspb.Message {
 
 	private static repeatedFields_ = [
-		3,4,
+		3,4,6,7,
 	];
 
 	constructor(data?: jspb.Message.MessageArray) {
@@ -219,42 +220,38 @@ export class User extends jspb.Message {
 	}
 
 
-	getId(): string {
-		return jspb.Message.getFieldWithDefault(this, 1, "");
+	getId(): string {return jspb.Message.getFieldWithDefault(this, 1, "");
 	}
 
 	setId(value: string): void {
 		(jspb.Message as any).setProto3StringField(this, 1, value);
 	}
 
-	getName(): string {
-		return jspb.Message.getFieldWithDefault(this, 2, "");
+	getName(): string {return jspb.Message.getFieldWithDefault(this, 2, "");
 	}
 
 	setName(value: string): void {
 		(jspb.Message as any).setProto3StringField(this, 2, value);
 	}
 
-	getRoles(): Array<Role> {
-		return jspb.Message.getFieldWithDefault(this, 3, [0]);
+	getRoles(): Array<Role> {return jspb.Message.getFieldWithDefault(this, 3, [0]);
 	}
 
 	setRoles(value: Array<Role>): void {
 		(jspb.Message as any).setProto3EnumField(this, 3, value);
 	}
-	
+
 	addRoles(value: Role, index?: number): void {
 		return jspb.Message.addToRepeatedField(this, 3, value, index);
 	}
 
-	getNames(): Array<string> {
-		return jspb.Message.getFieldWithDefault(this, 4, [""]);
+	getNames(): Array<string> {return jspb.Message.getFieldWithDefault(this, 4, [""]);
 	}
 
 	setNames(value: Array<string>): void {
 		(jspb.Message as any).setProto3StringField(this, 4, value);
 	}
-	
+
 	addNames(value: string, index?: number): void {
 		return jspb.Message.addToRepeatedField(this, 4, value, index);
 	}
@@ -267,6 +264,26 @@ export class User extends jspb.Message {
 		(jspb.Message as any).setWrapperField(this, 5, value);
 	}
 
+	getLabelsMap(): jspb.Map<string, string> {
+		// @ts-ignore Argument of type 'null' is not assignable to parameter of type 'typeof Message'.ts
+		// The property does exist but @types/google-protobuf is out of date.
+		return jspb.Message.getMapField(this, 6, false, null);
+	}
+
+	clearLabelsMap(): User {
+		this.getLabelsMap().clear();
+		return this;
+	}
+
+	getMoreLabelsMap(): jspb.Map<string, googleProtobufWrappers.StringValue> {
+		return jspb.Message.getMapField(this, 7, false, googleProtobufWrappers.StringValue);
+	}
+
+	clearMoreLabelsMap(): User {
+		this.getMoreLabelsMap().clear();
+		return this;
+	}
+
 	serializeBinary(): Uint8Array {
 		const writer = new jspb.BinaryWriter();
 		User.serializeBinaryToWriter(this, writer);
@@ -275,12 +292,14 @@ export class User extends jspb.Message {
 
 	toObject(): User.AsObject {
 		let f: any;
-		return {id: this.getId(),
+		return {
+			id: this.getId(),
 			name: this.getName(),
-			
 			roles: this.getRoles(),
-			names: this.getNames(),createDate: (f = this.getCreateDate()) && f.toObject(),
-			
+			names: this.getNames(),
+			createDate: (f = this.getCreateDate()) && f.toObject(),
+			labelsMap: (f = this.getLabelsMap()) && f.toObject(),
+			moreLabelsMap: (f = this.getMoreLabelsMap()) && f.toObject(),
 		};
 	}
 
@@ -304,6 +323,18 @@ export class User extends jspb.Message {
 		const field5 = message.getCreateDate();
 		if (field5 != null) {
 			writer.writeMessage(5, field5, googleProtobufTimestamp.Timestamp.serializeBinaryToWriter);
+		}
+		const field6 = message.getLabelsMap();
+		if (field6.getLength() > 0) {
+			// @ts-ignore Property 'serializeBinary' does not exist on type 'Map<K, V>'
+			// The property does exist but @types/google-protobuf is out of date.
+			field6.serializeBinary(6, writer, jspb.BinaryWriter.prototype.writeString, jspb.BinaryWriter.prototype.writeString)
+		}
+		const field7 = message.getMoreLabelsMap();
+		if (field7.getLength() > 0) {
+			// @ts-ignore Property 'serializeBinary' does not exist on type 'Map<K, V>'
+			// The property does exist but @types/google-protobuf is out of date.
+			field7.serializeBinary(7, writer, jspb.BinaryWriter.prototype.writeString, jspb.BinaryWriter.prototype.writeMessage)
 		}
 	}
 
@@ -346,6 +377,18 @@ export class User extends jspb.Message {
 				const field5 = new googleProtobufTimestamp.Timestamp();
 				reader.readMessage(field5, googleProtobufTimestamp.Timestamp.deserializeBinaryFromReader);
 				message.setCreateDate(field5);
+				break;
+			case 6:
+				const field6 = message.getLabelsMap();
+				/* reader.readMessage(value, function(message, reader) {
+					jspb.Map.deserializeBinary(message, reader, jspb.BinaryReader.prototype.readString, jspb.BinaryReader.prototype.readString, null, "", "");
+					}); */
+				break;
+			case 7:
+				const field7 = message.getMoreLabelsMap();
+				/* reader.readMessage(value, function(message, reader) {
+					jspb.Map.deserializeBinary(message, reader, jspb.BinaryReader.prototype.readString, jspb.BinaryReader.prototype.readString, null, "", "");
+					}); */
 				break;
 			default:
 				reader.skipField();
@@ -390,8 +433,8 @@ export class UpdateUserRequest extends jspb.Message {
 
 	toObject(): UpdateUserRequest.AsObject {
 		let f: any;
-		return {name: (f = this.getName()) && f.toObject(),
-			
+		return {
+			name: (f = this.getName()) && f.toObject(),
 		};
 	}
 
@@ -472,9 +515,9 @@ export class ListUsersReq extends jspb.Message {
 
 	toObject(): ListUsersReq.AsObject {
 		let f: any;
-		return {createdSince: (f = this.getCreatedSince()) && f.toObject(),
+		return {
+			createdSince: (f = this.getCreatedSince()) && f.toObject(),
 			olderThan: (f = this.getOlderThan()) && f.toObject(),
-			
 		};
 	}
 
@@ -544,6 +587,10 @@ function UserFromObject(obj: User.AsObject | undefined): User | undefined {
 	(obj.names || [])
 		.forEach((item) => message.addNames(item));
 	message.setCreateDate(TimestampFromObject(obj.createDate));
+	(obj.labelsMap || [])
+		.forEach((entry) => message.getLabelsMap().set(entry[0], entry[1]));
+	(obj.moreLabelsMap || [])
+		.forEach((entry) => message.getMoreLabelsMap().set(entry[0], StringValueFromObject(entry[1])!))
 	return message;
 }
 

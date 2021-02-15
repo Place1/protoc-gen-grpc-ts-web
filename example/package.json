@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "tsc": "tsc"
   },
   "author": "",
   "license": "MIT",
@@ -12,5 +12,8 @@
     "@types/google-protobuf": "^3.7.2",
     "google-protobuf": "^4.0.0-rc.2",
     "grpc-web": "^1.2.0"
+  },
+  "devDependencies": {
+    "typescript": "^4.1.5"
   }
 }

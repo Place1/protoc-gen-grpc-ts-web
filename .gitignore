@@ -4,3 +4,5 @@ out/
 out_other/
 protoc-gen-*
 bin/
+!protoc-gen-dump
+code-generator-request.bin

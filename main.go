@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"io/ioutil"
 	"log"
 	"os"
@@ -12,8 +13,22 @@ import (
 	"github.com/pkg/errors"
 )
 
+var input = flag.String("code-generator-request", "", "A path to a protobuf encoded CodeGeneratorRequest")
+
 func main() {
-	data, err := ioutil.ReadAll(os.Stdin)
+	flag.Parse()
+
+	reader := os.Stdin
+	if *input != "" {
+		f, err := os.OpenFile(*input, os.O_RDONLY, 0)
+		if err != nil {
+			log.Fatal(errors.Wrap(err, "failed to read code-generator-request file"))
+		}
+		defer f.Close()
+		reader = f
+	}
+
+	data, err := ioutil.ReadAll(reader)
 	// data, err := ioutil.ReadFile("example-stdin.bin")
 	if err != nil {
 		log.Fatal(errors.Wrap(err, "reading input"))

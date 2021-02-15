@@ -29,6 +29,8 @@ message User {
   repeated Role roles = 3;
   repeated string names = 4;
   google.protobuf.Timestamp create_date = 5;
+  map<string, string> labels = 6;
+  map<string, google.protobuf.StringValue> more_labels = 7;
 }
 
 message UpdateUserRequest {

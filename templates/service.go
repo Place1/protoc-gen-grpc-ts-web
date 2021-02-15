@@ -144,30 +144,47 @@ export class {{messageName $message $file}} extends jspb.Message {
 
 {{range $field := .Field}}
 	get{{pascalFieldName $field}}(): {{fieldType $field $file}} {
-		{{- if (isMessage $field)}}
+		{{- if (isMap $field)}}
+		{{- if isMessage (mapValueField $field)}}
+		return jspb.Message.getMapField(this, {{$field.GetNumber}}, false, {{fieldTypeName (mapValueField $field) $file}});
+		{{- else}}
+		// @ts-ignore Argument of type 'null' is not assignable to parameter of type 'typeof Message'.ts
+		// The property does exist but @types/google-protobuf is out of date.
+		return jspb.Message.getMapField(this, {{$field.GetNumber}}, false, null);
+		{{- end}}
+		{{- else if (isMessage $field)}}
 		return jspb.Message.{{jspbFieldGetter $field}}(this, {{fieldTypeName $field $file}}, {{$field.GetNumber}});
-		{{- end -}}
-		{{if not (isMessage $field)}}
+		{{- else -}}
 		return jspb.Message.{{jspbFieldGetter $field}}(this, {{$field.GetNumber}}, {{defaultValue $field}});
 		{{- end}}
 	}
+
+	{{- if not (isMap $field)}}
 
 	set{{pascalFieldName $field}}(value{{if isOptional $field}}?{{end}}: {{fieldType $field $file}}): void {
 		(jspb.Message as any).{{jspbFieldSetter $field}}(this, {{$field.Number}}, value);
 	}
 
-	{{- if (isRepeated $field)}}
-	{{if (isMessage $field)}}
+	{{- if and (isRepeated $field) (isMessage $field)}}
+
 	add{{pascalFieldName $field}}(value?: {{fieldTypeName $field $file}}, index?: number): {{fieldTypeName $field $file}} {
 		return jspb.Message.addToRepeatedWrapperField(this, {{$field.Number}}, value, {{fieldTypeName $field $file}}, index);
 	}
-	{{- end -}}
-	{{if not (isMessage $field)}}
+	{{- end}}
+
+	{{- if and (isRepeated $field) (not (isMessage $field))}}
+
 	add{{pascalFieldName $field}}(value: {{fieldTypeName $field $file}}, index?: number): void {
 		return jspb.Message.addToRepeatedField(this, {{$field.Number}}, value, index);
 	}
-	{{- end -}}
-	{{end}}
+	{{- end}}
+	{{- else}}
+
+	clear{{pascalFieldName $field}}(): {{messageName $message $file}} {
+		this.get{{pascalFieldName $field}}().clear();
+		return this;
+	}
+	{{- end}}
 {{end}}
 	serializeBinary(): Uint8Array {
 		const writer = new jspb.BinaryWriter();
@@ -179,17 +196,19 @@ export class {{messageName $message $file}} extends jspb.Message {
 		let f: any;
 		return {
 {{- range $field := .Field}}
+			{{- if isMap $field}}
+			{{camelFieldName $field}}: (f = this.get{{pascalFieldName $field}}()) && f.toObject(),
+			{{- else}}
 			{{- if isRepeated $field}}
 			{{camelFieldName $field}}: this.get{{pascalFieldName $field}}(){{if isMessage $field}}.map((item) => item.toObject()){{end}},
-			{{- end -}}
-			{{- if not (isRepeated $field) -}}
-			{{if isMessage $field -}}
+			{{- else -}}
+			{{- if isMessage $field}}
 			{{camelFieldName $field}}: (f = this.get{{pascalFieldName $field}}()) && f.toObject(),
-			{{- end -}}
-			{{- if not (isMessage $field) -}}
+			{{- else}}
 			{{camelFieldName $field}}: this.get{{pascalFieldName $field}}(),
 			{{- end}}
-			{{end}}
+			{{- end}}
+			{{- end}}
 {{- end}}
 		};
 	}
@@ -198,11 +217,17 @@ export class {{messageName $message $file}} extends jspb.Message {
 {{- range $field := .Field}}
 		const field{{$field.Number}} = message.get{{pascalFieldName $field}}();
 		if (field{{$field.Number}}{{zeroCheck $field}}) {
+			{{- if isMap $field}}
+			// @ts-ignore Property 'serializeBinary' does not exist on type 'Map<K, V>'
+			// The property does exist but @types/google-protobuf is out of date.
+			field{{$field.Number}}.serializeBinary({{$field.Number}}, writer, jspb.BinaryWriter.prototype.{{jspbMapKeyWriter $field}}, jspb.BinaryWriter.prototype.{{jspbMapValueWriter $field}})
+			{{- else }}
 			writer.{{binaryWriterMethodName $field}}({{$field.Number}}, field{{$field.Number}}
 				{{- if (isMessage $field) -}}
 				, {{fieldTypeName $field $file}}.serializeBinaryToWriter
 				{{- end -}}
 			);
+			{{- end}}
 		}
 {{- end}}
 	}
@@ -222,7 +247,9 @@ export class {{messageName $message $file}} extends jspb.Message {
 			switch (field) {
 {{- range $field := .Field}}
 			case {{$field.Number}}:
-{{- if (isMessage $field)}}
+{{- if isMap $field}}
+				const field{{$field.Number}} = message.get{{pascalFieldName $field}}();
+{{- else if (isMessage $field)}}
 				const field{{$field.Number}} = new {{fieldTypeName $field $file}}();
 				reader.{{binaryReaderMethodName $field}}(field{{$field.Number}}, {{fieldTypeName $field $file}}.deserializeBinaryFromReader);
 {{- else}}
@@ -237,7 +264,11 @@ export class {{messageName $message $file}} extends jspb.Message {
 {{- end -}}
 {{- end -}}
 {{- if (isRepeated $field)}}
-{{- if or (isMessage $field) (isString $field)}}
+{{- if isMap $field}}
+				/* reader.readMessage(value, function(message, reader) {
+					jspb.Map.deserializeBinary(message, reader, jspb.BinaryReader.prototype.readString, jspb.BinaryReader.prototype.readString, null, "", "");
+					}); */
+{{- else if or (isMessage $field) (isString $field)}}
 				message.add{{pascalFieldName $field}}(field{{$field.Number}});
 {{- else}}
 				for (const value of fieldValues{{$field.Number}}) {
@@ -268,7 +299,14 @@ function {{$dep.Message.GetName}}FromObject(obj: {{messageTypeToTS $dep.TypeName
 	}
 	const message = new {{messageTypeToTS $dep.TypeName $file}}();
 {{- range $field := .Message.Field}}
-	{{- if isRepeated $field}}
+	{{- if isMap $field}}
+	(obj.{{camelFieldName $field}} || [])
+		{{- if isMessage (mapValueField $field)}}
+		.forEach((entry) => message.get{{pascalFieldName $field}}().set(entry[0], {{stripPackage (mapValueField $field).TypeName}}FromObject(entry[1])!))
+		{{- else }}
+		.forEach((entry) => message.get{{pascalFieldName $field}}().set(entry[0], entry[1]));
+		{{- end }}
+	{{- else if isRepeated $field}}
 	(obj.{{camelFieldName $field}} || [])
 		{{- if isMessage $field}}
 		.map((item) => {{stripPackage $field.TypeName}}FromObject(item))
@@ -328,10 +366,18 @@ func funcmap(depLookup map[string]Dependency) template.FuncMap {
 			return messageTypeToTS(method.GetOutputType(), file, depLookup)
 		},
 		"pascalFieldName": func(field *descriptor.FieldDescriptorProto) string {
-			return strcase.ToCamel(field.GetName())
+			name := strcase.ToCamel(field.GetName())
+			if isMap(depLookup, field) {
+				name = fmt.Sprintf("%sMap", name)
+			}
+			return name
 		},
 		"camelFieldName": func(field *descriptor.FieldDescriptorProto) string {
-			return strcase.ToLowerCamel(field.GetName())
+			name := strcase.ToLowerCamel(field.GetName())
+			if isMap(depLookup, field) {
+				name = fmt.Sprintf("%sMap", name)
+			}
+			return name
 		},
 		"typeToMessageProto": func(typeName string) *descriptor.DescriptorProto {
 			if value, ok := depLookup[typeName]; ok {
@@ -343,6 +389,12 @@ func funcmap(depLookup map[string]Dependency) template.FuncMap {
 			return fieldTypeName(field, file, depLookup)
 		},
 		"fieldType": func(field *descriptor.FieldDescriptorProto, file *descriptor.FileDescriptorProto) string {
+			if isMap(depLookup, field) {
+				m := depLookup[*field.TypeName]
+				k := m.Message.Field[0]
+				v := m.Message.Field[1]
+				return fmt.Sprintf("jspb.Map<%s, %s>", fieldTypeName(k, file, depLookup), fieldTypeName(v, file, depLookup))
+			}
 			if field.GetLabel() == descriptor.FieldDescriptorProto_LABEL_REPEATED {
 				return fmt.Sprintf("Array<%s>", fieldTypeName(field, file, depLookup))
 			}
@@ -363,6 +415,9 @@ func funcmap(depLookup map[string]Dependency) template.FuncMap {
 		"isMessage": func(field *descriptor.FieldDescriptorProto) bool {
 			return field.GetType() == descriptor.FieldDescriptorProto_TYPE_MESSAGE
 		},
+		"isMap": func(field *descriptor.FieldDescriptorProto) bool {
+			return isMap(depLookup, field)
+		},
 		"isOptional": func(field *descriptor.FieldDescriptorProto) bool {
 			if field.GetLabel() == descriptor.FieldDescriptorProto_LABEL_REPEATED {
 				return false
@@ -374,6 +429,20 @@ func funcmap(depLookup map[string]Dependency) template.FuncMap {
 		},
 		"isString": func(field *descriptor.FieldDescriptorProto) bool {
 			return field.GetType() == descriptor.FieldDescriptorProto_TYPE_STRING
+		},
+		"mapKeyField": func(field *descriptor.FieldDescriptorProto) *descriptor.FieldDescriptorProto {
+			m := depLookup[field.GetTypeName()]
+			return m.Message.Field[0]
+		},
+		"mapValueField": func(field *descriptor.FieldDescriptorProto) *descriptor.FieldDescriptorProto {
+			m := depLookup[field.GetTypeName()]
+			return m.Message.Field[1]
+		},
+		"jspbMapKeyWriter": func(field *descriptor.FieldDescriptorProto) string {
+			return jspbMapKeyWriter(depLookup, field)
+		},
+		"jspbMapValueWriter": func(field *descriptor.FieldDescriptorProto) string {
+			return jspbMapValueWriter(depLookup, field)
 		},
 		"binaryWriterMethodName": func(field *descriptor.FieldDescriptorProto) string {
 			if field.GetLabel() == descriptor.FieldDescriptorProto_LABEL_REPEATED {
@@ -440,7 +509,9 @@ func funcmap(depLookup map[string]Dependency) template.FuncMap {
 			return defaultValue()
 		},
 		"zeroCheck": func(field *descriptor.FieldDescriptorProto) string {
-			if field.GetLabel() == descriptor.FieldDescriptorProto_LABEL_REPEATED {
+			if isMap(depLookup, field) {
+				return ".getLength() > 0"
+			} else if field.GetLabel() == descriptor.FieldDescriptorProto_LABEL_REPEATED {
 				return ".length > 0"
 			}
 			switch field.GetType() {
@@ -484,7 +555,9 @@ func funcmap(depLookup map[string]Dependency) template.FuncMap {
 		},
 		"jspbFieldGetter": func(field *descriptor.FieldDescriptorProto) string {
 			if field.GetType() == descriptor.FieldDescriptorProto_TYPE_MESSAGE {
-				if field.GetLabel() == descriptor.FieldDescriptorProto_LABEL_REPEATED {
+				if isMap(depLookup, field) {
+					return "getMapField"
+				} else if field.GetLabel() == descriptor.FieldDescriptorProto_LABEL_REPEATED {
 					return "getRepeatedWrapperField"
 				}
 				return "getWrapperField"
@@ -535,7 +608,7 @@ func funcmap(depLookup map[string]Dependency) template.FuncMap {
 func recursiveMsgDeps(message Dependency, depLookup map[string]Dependency) []Dependency {
 	messages := []Dependency{message}
 	for _, field := range message.Message.GetField() {
-		if field.GetType() == descriptor.FieldDescriptorProto_TYPE_MESSAGE {
+		if field.GetType() == descriptor.FieldDescriptorProto_TYPE_MESSAGE && !isMap(depLookup, field) {
 			messages = append(messages, recursiveMsgDeps(depLookup[field.GetTypeName()], depLookup)...)
 		}
 	}
@@ -637,6 +710,14 @@ func NewDependencyLookupTable(req *plugin.CodeGeneratorRequest) map[string]Depen
 				TypeName: qualified,
 				Message:  m,
 			}
+			for _, n := range m.NestedType {
+				qualified := fmt.Sprintf(".%s.%s.%s", f.GetPackage(), m.GetName(), n.GetName())
+				lookup[qualified] = Dependency{
+					File:     f.GetName(),
+					TypeName: qualified,
+					Message:  n,
+				}
+			}
 		}
 		for _, e := range f.GetEnumType() {
 			qualified := fmt.Sprintf(".%s.%s", f.GetPackage(), e.GetName())
@@ -692,6 +773,12 @@ func fieldTypeName(field *descriptor.FieldDescriptorProto, file *descriptor.File
 }
 
 func fieldObjectTypeName(field *descriptor.FieldDescriptorProto, file *descriptor.FileDescriptorProto, depLookup map[string]Dependency) string {
+	if isMap(depLookup, field) {
+		m := depLookup[field.GetTypeName()]
+		k := m.Message.Field[0]
+		v := m.Message.Field[1]
+		return fmt.Sprintf("[%s, %s]", fieldObjectTypeName(k, file, depLookup), fieldObjectTypeName(v, file, depLookup))
+	}
 	switch field.GetType() {
 	case descriptor.FieldDescriptorProto_TYPE_MESSAGE:
 		return fmt.Sprintf("%s.AsObject", fieldTypeName(field, file, depLookup))
@@ -783,4 +870,32 @@ func jspbFieldSetterName(field *descriptor.FieldDescriptorProto) string {
 	}
 	log.Fatalf("unknown proto type: %s", field.GetTypeName())
 	return ""
+}
+
+func isMap(depLookup map[string]Dependency, field *descriptor.FieldDescriptorProto) bool {
+	isRepeated := field.GetLabel() == descriptor.FieldDescriptorProto_LABEL_REPEATED
+	isMessage := field.GetType() == descriptor.FieldDescriptorProto_TYPE_MESSAGE
+	hasTypeName := field.GetTypeName() != ""
+	if isRepeated && isMessage && hasTypeName {
+		if m, ok := depLookup[field.GetTypeName()]; ok {
+			if len(m.Message.Field) == 2 {
+				if m.Message.Field[0].GetName() == "key" && m.Message.Field[1].GetName() == "value" {
+					return true
+				}
+			}
+		}
+	}
+	return false
+}
+
+func jspbMapKeyWriter(depLookup map[string]Dependency, field *descriptor.FieldDescriptorProto) string {
+	m := depLookup[field.GetTypeName()]
+	k := m.Message.Field[0]
+	return fmt.Sprintf("write%s", jspbBinaryReaderWriterMethodName(k))
+}
+
+func jspbMapValueWriter(depLookup map[string]Dependency, field *descriptor.FieldDescriptorProto) string {
+	m := depLookup[field.GetTypeName()]
+	k := m.Message.Field[1]
+	return fmt.Sprintf("write%s", jspbBinaryReaderWriterMethodName(k))
 }
