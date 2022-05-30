@@ -11,642 +11,633 @@ import * as googleProtobufTimestamp from 'google-protobuf/google/protobuf/timest
 import * as googleProtobufDuration from 'google-protobuf/google/protobuf/duration_pb';
 
 export class UserService {
+  private client_ = new grpcWeb.GrpcWebClientBase({
+    format: 'text',
+  });
 
-	private client_ = new grpcWeb.GrpcWebClientBase({
-		format: 'text',
-	});
+  private methodInfoAddUser = new grpcWeb.MethodDescriptor<AddUserReq, User>(
+    'AddUser',
+    grpcWeb.MethodType.UNARY,
+    AddUserReq,
+    User,
+    (req: AddUserReq) => req.serializeBinary(),
+    User.deserializeBinary
+  );
 
-	private methodInfoAddUser = new grpcWeb.MethodDescriptor<AddUserReq, User>(
-		"AddUser",
-		null,
-		AddUserReq,
-		User,
-		(req: AddUserReq) => req.serializeBinary(),
-		User.deserializeBinary
-	);
+  private methodInfoListUsers = new grpcWeb.MethodDescriptor<ListUsersReq, User>(
+    'ListUsers',
+    null,
+    ListUsersReq,
+    User,
+    (req: ListUsersReq) => req.serializeBinary(),
+    User.deserializeBinary
+  );
 
-	private methodInfoListUsers = new grpcWeb.MethodDescriptor<ListUsersReq, User>(
-		"ListUsers",
-		null,
-		ListUsersReq,
-		User,
-		(req: ListUsersReq) => req.serializeBinary(),
-		User.deserializeBinary
-	);
+  private methodInfoSince = new grpcWeb.MethodDescriptor<googleProtobufTimestamp.Timestamp, googleProtobufEmpty.Empty>(
+    'Since',
+    null,
+    googleProtobufTimestamp.Timestamp,
+    googleProtobufEmpty.Empty,
+    (req: googleProtobufTimestamp.Timestamp) => req.serializeBinary(),
+    googleProtobufEmpty.Empty.deserializeBinary
+  );
 
-	private methodInfoSince = new grpcWeb.MethodDescriptor<googleProtobufTimestamp.Timestamp, googleProtobufEmpty.Empty>(
-		"Since",
-		null,
-		googleProtobufTimestamp.Timestamp,
-		googleProtobufEmpty.Empty,
-		(req: googleProtobufTimestamp.Timestamp) => req.serializeBinary(),
-		googleProtobufEmpty.Empty.deserializeBinary
-	);
+  constructor(private hostname: string, private defaultMetadata?: () => grpcWeb.Metadata) {}
 
-	constructor(
-		private hostname: string,
-		private defaultMetadata?: () => grpcWeb.Metadata,
-	) { }
+  addUser(req: AddUserReq.AsObject, metadata?: grpcWeb.Metadata): Promise<User.AsObject> {
+    return new Promise((resolve, reject) => {
+      const message = AddUserReqFromObject(req);
+      this.client_.rpcCall(
+        this.hostname + '/example.UserService/AddUser',
+        message,
+        Object.assign({}, this.defaultMetadata ? this.defaultMetadata() : {}, metadata),
+        this.methodInfoAddUser,
+        (err: grpcWeb.Error, res: User) => {
+          if (err) {
+            reject(err);
+          } else {
+            resolve(res.toObject());
+          }
+        }
+      );
+    });
+  }
 
-	addUser(req: AddUserReq.AsObject, metadata?: grpcWeb.Metadata): Promise<User.AsObject> {
-		return new Promise((resolve, reject) => {
-			const message = AddUserReqFromObject(req);
-			this.client_.rpcCall(
-				this.hostname + '/example.UserService/AddUser',
-				message,
-				Object.assign({}, this.defaultMetadata ? this.defaultMetadata() : {}, metadata),
-				this.methodInfoAddUser,
-				(err: grpcWeb.Error, res: User) => {
-					if (err) {
-						reject(err);
-					} else {
-						resolve(res.toObject());
-					}
-				},
-			);
-		});
-	}
+  listUsers(req: ListUsersReq.AsObject, metadata?: grpcWeb.Metadata) {
+    const message = ListUsersReqFromObject(req);
+    const stream = this.client_.serverStreaming(
+      this.hostname + '/example.UserService/ListUsers',
+      message,
+      Object.assign({}, this.defaultMetadata ? this.defaultMetadata() : {}, metadata),
+      this.methodInfoListUsers
+    );
+    return {
+      onError(callback: (err: grpcWeb.Error) => void) {
+        stream.on('error', callback);
+      },
+      onStatus(callback: (status: grpcWeb.Status) => void) {
+        stream.on('status', callback);
+      },
+      onData(callback: (response: User.AsObject) => void) {
+        stream.on('data', (message) => {
+          callback(message.toObject());
+        });
+      },
+      onEnd(callback: () => void) {
+        stream.on('end', callback);
+      },
+      cancel() {
+        stream.cancel();
+      },
+    };
+  }
 
-	listUsers(req: ListUsersReq.AsObject, metadata?: grpcWeb.Metadata) {
-		const message = ListUsersReqFromObject(req);
-		const stream = this.client_.serverStreaming(
-			this.hostname + '/example.UserService/ListUsers',
-			message,
-			Object.assign({}, this.defaultMetadata ? this.defaultMetadata() : {}, metadata),
-			this.methodInfoListUsers,
-		);
-		return {
-			onError(callback: (err: grpcWeb.Error) => void) {
-				stream.on('error', callback);
-			},
-			onStatus(callback: (status: grpcWeb.Status) => void) {
-				stream.on('status', callback);
-			},
-			onData(callback: (response: User.AsObject) => void) {
-				stream.on('data', (message) => {
-					callback(message.toObject());
-				});
-			},
-			onEnd(callback: () => void) {
-				stream.on('end', callback);
-			},
-			cancel() {
-				stream.cancel();
-			},
-		};
-	}
-
-	since(req: googleProtobufTimestamp.Timestamp.AsObject, metadata?: grpcWeb.Metadata): Promise<googleProtobufEmpty.Empty.AsObject> {
-		return new Promise((resolve, reject) => {
-			const message = TimestampFromObject(req);
-			this.client_.rpcCall(
-				this.hostname + '/example.UserService/Since',
-				message,
-				Object.assign({}, this.defaultMetadata ? this.defaultMetadata() : {}, metadata),
-				this.methodInfoSince,
-				(err: grpcWeb.Error, res: googleProtobufEmpty.Empty) => {
-					if (err) {
-						reject(err);
-					} else {
-						resolve(res.toObject());
-					}
-				},
-			);
-		});
-	}
-
+  since(
+    req: googleProtobufTimestamp.Timestamp.AsObject,
+    metadata?: grpcWeb.Metadata
+  ): Promise<googleProtobufEmpty.Empty.AsObject> {
+    return new Promise((resolve, reject) => {
+      const message = TimestampFromObject(req);
+      this.client_.rpcCall(
+        this.hostname + '/example.UserService/Since',
+        message,
+        Object.assign({}, this.defaultMetadata ? this.defaultMetadata() : {}, metadata),
+        this.methodInfoSince,
+        (err: grpcWeb.Error, res: googleProtobufEmpty.Empty) => {
+          if (err) {
+            reject(err);
+          } else {
+            resolve(res.toObject());
+          }
+        }
+      );
+    });
+  }
 }
 
 export enum Role {
-	GUEST = 0,
-	MEMBER = 1,
-	ADMIN = 2,
+  GUEST = 0,
+  MEMBER = 1,
+  ADMIN = 2,
 }
 
-
-
 export declare namespace AddUserReq {
-	export type AsObject = {
-		name: string,
-	}
+  export type AsObject = {
+    name: string;
+  };
 }
 
 export class AddUserReq extends jspb.Message {
+  private static repeatedFields_ = [];
 
-	private static repeatedFields_ = [
-		
-	];
+  constructor(data?: jspb.Message.MessageArray) {
+    super();
+    jspb.Message.initialize(this, data || [], 0, -1, AddUserReq.repeatedFields_, null);
+  }
 
-	constructor(data?: jspb.Message.MessageArray) {
-		super();
-		jspb.Message.initialize(this, data || [], 0, -1, AddUserReq.repeatedFields_, null);
-	}
+  getName(): string {
+    return jspb.Message.getFieldWithDefault(this, 1, '');
+  }
 
+  setName(value: string): void {
+    (jspb.Message as any).setProto3StringField(this, 1, value);
+  }
 
-	getName(): string {return jspb.Message.getFieldWithDefault(this, 1, "");
-	}
+  serializeBinary(): Uint8Array {
+    const writer = new jspb.BinaryWriter();
+    AddUserReq.serializeBinaryToWriter(this, writer);
+    return writer.getResultBuffer();
+  }
 
-	setName(value: string): void {
-		(jspb.Message as any).setProto3StringField(this, 1, value);
-	}
+  toObject(): AddUserReq.AsObject {
+    let f: any;
+    return {
+      name: this.getName(),
+    };
+  }
 
-	serializeBinary(): Uint8Array {
-		const writer = new jspb.BinaryWriter();
-		AddUserReq.serializeBinaryToWriter(this, writer);
-		return writer.getResultBuffer();
-	}
+  static serializeBinaryToWriter(message: AddUserReq, writer: jspb.BinaryWriter): void {
+    const field1 = message.getName();
+    if (field1.length > 0) {
+      writer.writeString(1, field1);
+    }
+  }
 
-	toObject(): AddUserReq.AsObject {
-		let f: any;
-		return {
-			name: this.getName(),
-		};
-	}
+  static deserializeBinary(bytes: Uint8Array): AddUserReq {
+    var reader = new jspb.BinaryReader(bytes);
+    var message = new AddUserReq();
+    return AddUserReq.deserializeBinaryFromReader(message, reader);
+  }
 
-	static serializeBinaryToWriter(message: AddUserReq, writer: jspb.BinaryWriter): void {
-		const field1 = message.getName();
-		if (field1.length > 0) {
-			writer.writeString(1, field1);
-		}
-	}
-
-	static deserializeBinary(bytes: Uint8Array): AddUserReq {
-		var reader = new jspb.BinaryReader(bytes);
-		var message = new AddUserReq();
-		return AddUserReq.deserializeBinaryFromReader(message, reader);
-	}
-
-	static deserializeBinaryFromReader(message: AddUserReq, reader: jspb.BinaryReader): AddUserReq {
-		while (reader.nextField()) {
-			if (reader.isEndGroup()) {
-				break;
-			}
-			const field = reader.getFieldNumber();
-			switch (field) {
-			case 1:
-				const field1 = reader.readString()
-				message.setName(field1);
-				break;
-			default:
-				reader.skipField();
-				break;
-			}
-		}
-		return message;
-	}
-
+  static deserializeBinaryFromReader(message: AddUserReq, reader: jspb.BinaryReader): AddUserReq {
+    while (reader.nextField()) {
+      if (reader.isEndGroup()) {
+        break;
+      }
+      const field = reader.getFieldNumber();
+      switch (field) {
+        case 1:
+          const field1 = reader.readString();
+          message.setName(field1);
+          break;
+        default:
+          reader.skipField();
+          break;
+      }
+    }
+    return message;
+  }
 }
 export declare namespace User {
-	export type AsObject = {
-		id: string,
-		name: string,
-		roles: Array<Role>,
-		names: Array<string>,
-		createDate?: googleProtobufTimestamp.Timestamp.AsObject,
-		labelsMap: Array<[string, string]>,
-		moreLabelsMap: Array<[string, googleProtobufWrappers.StringValue.AsObject]>,
-	}
+  export type AsObject = {
+    id: string;
+    name: string;
+    roles: Array<Role>;
+    names: Array<string>;
+    createDate?: googleProtobufTimestamp.Timestamp.AsObject;
+    labelsMap: Array<[string, string]>;
+    moreLabelsMap: Array<[string, googleProtobufWrappers.StringValue.AsObject]>;
+  };
 }
 
 export class User extends jspb.Message {
+  private static repeatedFields_ = [3, 4, 6, 7];
 
-	private static repeatedFields_ = [
-		3,4,6,7,
-	];
+  constructor(data?: jspb.Message.MessageArray) {
+    super();
+    jspb.Message.initialize(this, data || [], 0, -1, User.repeatedFields_, null);
+  }
 
-	constructor(data?: jspb.Message.MessageArray) {
-		super();
-		jspb.Message.initialize(this, data || [], 0, -1, User.repeatedFields_, null);
-	}
+  getId(): string {
+    return jspb.Message.getFieldWithDefault(this, 1, '');
+  }
 
+  setId(value: string): void {
+    (jspb.Message as any).setProto3StringField(this, 1, value);
+  }
 
-	getId(): string {return jspb.Message.getFieldWithDefault(this, 1, "");
-	}
+  getName(): string {
+    return jspb.Message.getFieldWithDefault(this, 2, '');
+  }
 
-	setId(value: string): void {
-		(jspb.Message as any).setProto3StringField(this, 1, value);
-	}
+  setName(value: string): void {
+    (jspb.Message as any).setProto3StringField(this, 2, value);
+  }
 
-	getName(): string {return jspb.Message.getFieldWithDefault(this, 2, "");
-	}
+  getRoles(): Array<Role> {
+    return jspb.Message.getFieldWithDefault(this, 3, [0]);
+  }
 
-	setName(value: string): void {
-		(jspb.Message as any).setProto3StringField(this, 2, value);
-	}
+  setRoles(value: Array<Role>): void {
+    (jspb.Message as any).setProto3EnumField(this, 3, value);
+  }
 
-	getRoles(): Array<Role> {return jspb.Message.getFieldWithDefault(this, 3, [0]);
-	}
+  addRoles(value: Role, index?: number): void {
+    return jspb.Message.addToRepeatedField(this, 3, value, index);
+  }
 
-	setRoles(value: Array<Role>): void {
-		(jspb.Message as any).setProto3EnumField(this, 3, value);
-	}
+  getNames(): Array<string> {
+    return jspb.Message.getFieldWithDefault(this, 4, ['']);
+  }
 
-	addRoles(value: Role, index?: number): void {
-		return jspb.Message.addToRepeatedField(this, 3, value, index);
-	}
+  setNames(value: Array<string>): void {
+    (jspb.Message as any).setProto3StringField(this, 4, value);
+  }
 
-	getNames(): Array<string> {return jspb.Message.getFieldWithDefault(this, 4, [""]);
-	}
+  addNames(value: string, index?: number): void {
+    return jspb.Message.addToRepeatedField(this, 4, value, index);
+  }
 
-	setNames(value: Array<string>): void {
-		(jspb.Message as any).setProto3StringField(this, 4, value);
-	}
+  getCreateDate(): googleProtobufTimestamp.Timestamp {
+    return jspb.Message.getWrapperField(this, googleProtobufTimestamp.Timestamp, 5);
+  }
 
-	addNames(value: string, index?: number): void {
-		return jspb.Message.addToRepeatedField(this, 4, value, index);
-	}
+  setCreateDate(value?: googleProtobufTimestamp.Timestamp): void {
+    (jspb.Message as any).setWrapperField(this, 5, value);
+  }
 
-	getCreateDate(): googleProtobufTimestamp.Timestamp {
-		return jspb.Message.getWrapperField(this, googleProtobufTimestamp.Timestamp, 5);
-	}
+  getLabelsMap(): jspb.Map<string, string> {
+    // @ts-ignore Argument of type 'null' is not assignable to parameter of type 'typeof Message'.ts
+    // The property does exist but @types/google-protobuf is out of date.
+    return jspb.Message.getMapField(this, 6, false, null);
+  }
 
-	setCreateDate(value?: googleProtobufTimestamp.Timestamp): void {
-		(jspb.Message as any).setWrapperField(this, 5, value);
-	}
+  clearLabelsMap(): User {
+    this.getLabelsMap().clear();
+    return this;
+  }
 
-	getLabelsMap(): jspb.Map<string, string> {
-		// @ts-ignore Argument of type 'null' is not assignable to parameter of type 'typeof Message'.ts
-		// The property does exist but @types/google-protobuf is out of date.
-		return jspb.Message.getMapField(this, 6, false, null);
-	}
+  getMoreLabelsMap(): jspb.Map<string, googleProtobufWrappers.StringValue> {
+    return jspb.Message.getMapField(this, 7, false, googleProtobufWrappers.StringValue);
+  }
 
-	clearLabelsMap(): User {
-		this.getLabelsMap().clear();
-		return this;
-	}
+  clearMoreLabelsMap(): User {
+    this.getMoreLabelsMap().clear();
+    return this;
+  }
 
-	getMoreLabelsMap(): jspb.Map<string, googleProtobufWrappers.StringValue> {
-		return jspb.Message.getMapField(this, 7, false, googleProtobufWrappers.StringValue);
-	}
+  serializeBinary(): Uint8Array {
+    const writer = new jspb.BinaryWriter();
+    User.serializeBinaryToWriter(this, writer);
+    return writer.getResultBuffer();
+  }
 
-	clearMoreLabelsMap(): User {
-		this.getMoreLabelsMap().clear();
-		return this;
-	}
+  toObject(): User.AsObject {
+    let f: any;
+    return {
+      id: this.getId(),
+      name: this.getName(),
+      roles: this.getRoles(),
+      names: this.getNames(),
+      createDate: (f = this.getCreateDate()) && f.toObject(),
+      labelsMap: (f = this.getLabelsMap()) && f.toObject(),
+      moreLabelsMap: (f = this.getMoreLabelsMap()) && f.toObject(),
+    };
+  }
 
-	serializeBinary(): Uint8Array {
-		const writer = new jspb.BinaryWriter();
-		User.serializeBinaryToWriter(this, writer);
-		return writer.getResultBuffer();
-	}
+  static serializeBinaryToWriter(message: User, writer: jspb.BinaryWriter): void {
+    const field1 = message.getId();
+    if (field1.length > 0) {
+      writer.writeString(1, field1);
+    }
+    const field2 = message.getName();
+    if (field2.length > 0) {
+      writer.writeString(2, field2);
+    }
+    const field3 = message.getRoles();
+    if (field3.length > 0) {
+      writer.writeRepeatedEnum(3, field3);
+    }
+    const field4 = message.getNames();
+    if (field4.length > 0) {
+      writer.writeRepeatedString(4, field4);
+    }
+    const field5 = message.getCreateDate();
+    if (field5 != null) {
+      writer.writeMessage(5, field5, googleProtobufTimestamp.Timestamp.serializeBinaryToWriter);
+    }
+    const field6 = message.getLabelsMap();
+    if (field6.getLength() > 0) {
+      // @ts-ignore Property 'serializeBinary' does not exist on type 'Map<K, V>'
+      // The property does exist but @types/google-protobuf is out of date.
+      field6.serializeBinary(
+        6,
+        writer,
+        jspb.BinaryWriter.prototype.writeString,
+        jspb.BinaryWriter.prototype.writeString
+      );
+    }
+    const field7 = message.getMoreLabelsMap();
+    if (field7.getLength() > 0) {
+      // @ts-ignore Property 'serializeBinary' does not exist on type 'Map<K, V>'
+      // The property does exist but @types/google-protobuf is out of date.
+      field7.serializeBinary(
+        7,
+        writer,
+        jspb.BinaryWriter.prototype.writeString,
+        jspb.BinaryWriter.prototype.writeMessage
+      );
+    }
+  }
 
-	toObject(): User.AsObject {
-		let f: any;
-		return {
-			id: this.getId(),
-			name: this.getName(),
-			roles: this.getRoles(),
-			names: this.getNames(),
-			createDate: (f = this.getCreateDate()) && f.toObject(),
-			labelsMap: (f = this.getLabelsMap()) && f.toObject(),
-			moreLabelsMap: (f = this.getMoreLabelsMap()) && f.toObject(),
-		};
-	}
+  static deserializeBinary(bytes: Uint8Array): User {
+    var reader = new jspb.BinaryReader(bytes);
+    var message = new User();
+    return User.deserializeBinaryFromReader(message, reader);
+  }
 
-	static serializeBinaryToWriter(message: User, writer: jspb.BinaryWriter): void {
-		const field1 = message.getId();
-		if (field1.length > 0) {
-			writer.writeString(1, field1);
-		}
-		const field2 = message.getName();
-		if (field2.length > 0) {
-			writer.writeString(2, field2);
-		}
-		const field3 = message.getRoles();
-		if (field3.length > 0) {
-			writer.writeRepeatedEnum(3, field3);
-		}
-		const field4 = message.getNames();
-		if (field4.length > 0) {
-			writer.writeRepeatedString(4, field4);
-		}
-		const field5 = message.getCreateDate();
-		if (field5 != null) {
-			writer.writeMessage(5, field5, googleProtobufTimestamp.Timestamp.serializeBinaryToWriter);
-		}
-		const field6 = message.getLabelsMap();
-		if (field6.getLength() > 0) {
-			// @ts-ignore Property 'serializeBinary' does not exist on type 'Map<K, V>'
-			// The property does exist but @types/google-protobuf is out of date.
-			field6.serializeBinary(6, writer, jspb.BinaryWriter.prototype.writeString, jspb.BinaryWriter.prototype.writeString)
-		}
-		const field7 = message.getMoreLabelsMap();
-		if (field7.getLength() > 0) {
-			// @ts-ignore Property 'serializeBinary' does not exist on type 'Map<K, V>'
-			// The property does exist but @types/google-protobuf is out of date.
-			field7.serializeBinary(7, writer, jspb.BinaryWriter.prototype.writeString, jspb.BinaryWriter.prototype.writeMessage)
-		}
-	}
-
-	static deserializeBinary(bytes: Uint8Array): User {
-		var reader = new jspb.BinaryReader(bytes);
-		var message = new User();
-		return User.deserializeBinaryFromReader(message, reader);
-	}
-
-	static deserializeBinaryFromReader(message: User, reader: jspb.BinaryReader): User {
-		while (reader.nextField()) {
-			if (reader.isEndGroup()) {
-				break;
-			}
-			const field = reader.getFieldNumber();
-			switch (field) {
-			case 1:
-				const field1 = reader.readString()
-				message.setId(field1);
-				break;
-			case 2:
-				const field2 = reader.readString()
-				message.setName(field2);
-				break;
-			case 3:
-				// @ts-ignore Property 'isDelimited' does not exist on type 'BinaryReader'
-				// The property does exist but @types/google-protobuf is out of date.
-				const fieldValues3 = reader.isDelimited()
-					? reader.readPackedEnum()
-					: [reader.readEnum()];
-				for (const value of fieldValues3) {
-					message.addRoles(value);
-				}
-				break;
-			case 4:
-				const field4 = reader.readString()
-				message.addNames(field4);
-				break;
-			case 5:
-				const field5 = new googleProtobufTimestamp.Timestamp();
-				reader.readMessage(field5, googleProtobufTimestamp.Timestamp.deserializeBinaryFromReader);
-				message.setCreateDate(field5);
-				break;
-			case 6:
-				const field6 = message.getLabelsMap();
-				/* reader.readMessage(value, function(message, reader) {
+  static deserializeBinaryFromReader(message: User, reader: jspb.BinaryReader): User {
+    while (reader.nextField()) {
+      if (reader.isEndGroup()) {
+        break;
+      }
+      const field = reader.getFieldNumber();
+      switch (field) {
+        case 1:
+          const field1 = reader.readString();
+          message.setId(field1);
+          break;
+        case 2:
+          const field2 = reader.readString();
+          message.setName(field2);
+          break;
+        case 3:
+          // @ts-ignore Property 'isDelimited' does not exist on type 'BinaryReader'
+          // The property does exist but @types/google-protobuf is out of date.
+          const fieldValues3 = reader.isDelimited() ? reader.readPackedEnum() : [reader.readEnum()];
+          for (const value of fieldValues3) {
+            message.addRoles(value);
+          }
+          break;
+        case 4:
+          const field4 = reader.readString();
+          message.addNames(field4);
+          break;
+        case 5:
+          const field5 = new googleProtobufTimestamp.Timestamp();
+          reader.readMessage(field5, googleProtobufTimestamp.Timestamp.deserializeBinaryFromReader);
+          message.setCreateDate(field5);
+          break;
+        case 6:
+          const field6 = message.getLabelsMap();
+          /* reader.readMessage(value, function(message, reader) {
 					jspb.Map.deserializeBinary(message, reader, jspb.BinaryReader.prototype.readString, jspb.BinaryReader.prototype.readString, null, "", "");
 					}); */
-				break;
-			case 7:
-				const field7 = message.getMoreLabelsMap();
-				/* reader.readMessage(value, function(message, reader) {
+          break;
+        case 7:
+          const field7 = message.getMoreLabelsMap();
+          /* reader.readMessage(value, function(message, reader) {
 					jspb.Map.deserializeBinary(message, reader, jspb.BinaryReader.prototype.readString, jspb.BinaryReader.prototype.readString, null, "", "");
 					}); */
-				break;
-			default:
-				reader.skipField();
-				break;
-			}
-		}
-		return message;
-	}
-
+          break;
+        default:
+          reader.skipField();
+          break;
+      }
+    }
+    return message;
+  }
 }
 export declare namespace UpdateUserRequest {
-	export type AsObject = {
-		name?: googleProtobufWrappers.StringValue.AsObject,
-	}
+  export type AsObject = {
+    name?: googleProtobufWrappers.StringValue.AsObject;
+  };
 }
 
 export class UpdateUserRequest extends jspb.Message {
+  private static repeatedFields_ = [];
 
-	private static repeatedFields_ = [
-		
-	];
+  constructor(data?: jspb.Message.MessageArray) {
+    super();
+    jspb.Message.initialize(this, data || [], 0, -1, UpdateUserRequest.repeatedFields_, null);
+  }
 
-	constructor(data?: jspb.Message.MessageArray) {
-		super();
-		jspb.Message.initialize(this, data || [], 0, -1, UpdateUserRequest.repeatedFields_, null);
-	}
+  getName(): googleProtobufWrappers.StringValue {
+    return jspb.Message.getWrapperField(this, googleProtobufWrappers.StringValue, 1);
+  }
 
+  setName(value?: googleProtobufWrappers.StringValue): void {
+    (jspb.Message as any).setWrapperField(this, 1, value);
+  }
 
-	getName(): googleProtobufWrappers.StringValue {
-		return jspb.Message.getWrapperField(this, googleProtobufWrappers.StringValue, 1);
-	}
+  serializeBinary(): Uint8Array {
+    const writer = new jspb.BinaryWriter();
+    UpdateUserRequest.serializeBinaryToWriter(this, writer);
+    return writer.getResultBuffer();
+  }
 
-	setName(value?: googleProtobufWrappers.StringValue): void {
-		(jspb.Message as any).setWrapperField(this, 1, value);
-	}
+  toObject(): UpdateUserRequest.AsObject {
+    let f: any;
+    return {
+      name: (f = this.getName()) && f.toObject(),
+    };
+  }
 
-	serializeBinary(): Uint8Array {
-		const writer = new jspb.BinaryWriter();
-		UpdateUserRequest.serializeBinaryToWriter(this, writer);
-		return writer.getResultBuffer();
-	}
+  static serializeBinaryToWriter(message: UpdateUserRequest, writer: jspb.BinaryWriter): void {
+    const field1 = message.getName();
+    if (field1 != null) {
+      writer.writeMessage(1, field1, googleProtobufWrappers.StringValue.serializeBinaryToWriter);
+    }
+  }
 
-	toObject(): UpdateUserRequest.AsObject {
-		let f: any;
-		return {
-			name: (f = this.getName()) && f.toObject(),
-		};
-	}
+  static deserializeBinary(bytes: Uint8Array): UpdateUserRequest {
+    var reader = new jspb.BinaryReader(bytes);
+    var message = new UpdateUserRequest();
+    return UpdateUserRequest.deserializeBinaryFromReader(message, reader);
+  }
 
-	static serializeBinaryToWriter(message: UpdateUserRequest, writer: jspb.BinaryWriter): void {
-		const field1 = message.getName();
-		if (field1 != null) {
-			writer.writeMessage(1, field1, googleProtobufWrappers.StringValue.serializeBinaryToWriter);
-		}
-	}
-
-	static deserializeBinary(bytes: Uint8Array): UpdateUserRequest {
-		var reader = new jspb.BinaryReader(bytes);
-		var message = new UpdateUserRequest();
-		return UpdateUserRequest.deserializeBinaryFromReader(message, reader);
-	}
-
-	static deserializeBinaryFromReader(message: UpdateUserRequest, reader: jspb.BinaryReader): UpdateUserRequest {
-		while (reader.nextField()) {
-			if (reader.isEndGroup()) {
-				break;
-			}
-			const field = reader.getFieldNumber();
-			switch (field) {
-			case 1:
-				const field1 = new googleProtobufWrappers.StringValue();
-				reader.readMessage(field1, googleProtobufWrappers.StringValue.deserializeBinaryFromReader);
-				message.setName(field1);
-				break;
-			default:
-				reader.skipField();
-				break;
-			}
-		}
-		return message;
-	}
-
+  static deserializeBinaryFromReader(message: UpdateUserRequest, reader: jspb.BinaryReader): UpdateUserRequest {
+    while (reader.nextField()) {
+      if (reader.isEndGroup()) {
+        break;
+      }
+      const field = reader.getFieldNumber();
+      switch (field) {
+        case 1:
+          const field1 = new googleProtobufWrappers.StringValue();
+          reader.readMessage(field1, googleProtobufWrappers.StringValue.deserializeBinaryFromReader);
+          message.setName(field1);
+          break;
+        default:
+          reader.skipField();
+          break;
+      }
+    }
+    return message;
+  }
 }
 export declare namespace ListUsersReq {
-	export type AsObject = {
-		createdSince?: googleProtobufTimestamp.Timestamp.AsObject,
-		olderThan?: googleProtobufDuration.Duration.AsObject,
-	}
+  export type AsObject = {
+    createdSince?: googleProtobufTimestamp.Timestamp.AsObject;
+    olderThan?: googleProtobufDuration.Duration.AsObject;
+  };
 }
 
 export class ListUsersReq extends jspb.Message {
+  private static repeatedFields_ = [];
 
-	private static repeatedFields_ = [
-		
-	];
+  constructor(data?: jspb.Message.MessageArray) {
+    super();
+    jspb.Message.initialize(this, data || [], 0, -1, ListUsersReq.repeatedFields_, null);
+  }
 
-	constructor(data?: jspb.Message.MessageArray) {
-		super();
-		jspb.Message.initialize(this, data || [], 0, -1, ListUsersReq.repeatedFields_, null);
-	}
+  getCreatedSince(): googleProtobufTimestamp.Timestamp {
+    return jspb.Message.getWrapperField(this, googleProtobufTimestamp.Timestamp, 1);
+  }
 
+  setCreatedSince(value?: googleProtobufTimestamp.Timestamp): void {
+    (jspb.Message as any).setWrapperField(this, 1, value);
+  }
 
-	getCreatedSince(): googleProtobufTimestamp.Timestamp {
-		return jspb.Message.getWrapperField(this, googleProtobufTimestamp.Timestamp, 1);
-	}
+  getOlderThan(): googleProtobufDuration.Duration {
+    return jspb.Message.getWrapperField(this, googleProtobufDuration.Duration, 2);
+  }
 
-	setCreatedSince(value?: googleProtobufTimestamp.Timestamp): void {
-		(jspb.Message as any).setWrapperField(this, 1, value);
-	}
+  setOlderThan(value?: googleProtobufDuration.Duration): void {
+    (jspb.Message as any).setWrapperField(this, 2, value);
+  }
 
-	getOlderThan(): googleProtobufDuration.Duration {
-		return jspb.Message.getWrapperField(this, googleProtobufDuration.Duration, 2);
-	}
+  serializeBinary(): Uint8Array {
+    const writer = new jspb.BinaryWriter();
+    ListUsersReq.serializeBinaryToWriter(this, writer);
+    return writer.getResultBuffer();
+  }
 
-	setOlderThan(value?: googleProtobufDuration.Duration): void {
-		(jspb.Message as any).setWrapperField(this, 2, value);
-	}
+  toObject(): ListUsersReq.AsObject {
+    let f: any;
+    return {
+      createdSince: (f = this.getCreatedSince()) && f.toObject(),
+      olderThan: (f = this.getOlderThan()) && f.toObject(),
+    };
+  }
 
-	serializeBinary(): Uint8Array {
-		const writer = new jspb.BinaryWriter();
-		ListUsersReq.serializeBinaryToWriter(this, writer);
-		return writer.getResultBuffer();
-	}
+  static serializeBinaryToWriter(message: ListUsersReq, writer: jspb.BinaryWriter): void {
+    const field1 = message.getCreatedSince();
+    if (field1 != null) {
+      writer.writeMessage(1, field1, googleProtobufTimestamp.Timestamp.serializeBinaryToWriter);
+    }
+    const field2 = message.getOlderThan();
+    if (field2 != null) {
+      writer.writeMessage(2, field2, googleProtobufDuration.Duration.serializeBinaryToWriter);
+    }
+  }
 
-	toObject(): ListUsersReq.AsObject {
-		let f: any;
-		return {
-			createdSince: (f = this.getCreatedSince()) && f.toObject(),
-			olderThan: (f = this.getOlderThan()) && f.toObject(),
-		};
-	}
+  static deserializeBinary(bytes: Uint8Array): ListUsersReq {
+    var reader = new jspb.BinaryReader(bytes);
+    var message = new ListUsersReq();
+    return ListUsersReq.deserializeBinaryFromReader(message, reader);
+  }
 
-	static serializeBinaryToWriter(message: ListUsersReq, writer: jspb.BinaryWriter): void {
-		const field1 = message.getCreatedSince();
-		if (field1 != null) {
-			writer.writeMessage(1, field1, googleProtobufTimestamp.Timestamp.serializeBinaryToWriter);
-		}
-		const field2 = message.getOlderThan();
-		if (field2 != null) {
-			writer.writeMessage(2, field2, googleProtobufDuration.Duration.serializeBinaryToWriter);
-		}
-	}
-
-	static deserializeBinary(bytes: Uint8Array): ListUsersReq {
-		var reader = new jspb.BinaryReader(bytes);
-		var message = new ListUsersReq();
-		return ListUsersReq.deserializeBinaryFromReader(message, reader);
-	}
-
-	static deserializeBinaryFromReader(message: ListUsersReq, reader: jspb.BinaryReader): ListUsersReq {
-		while (reader.nextField()) {
-			if (reader.isEndGroup()) {
-				break;
-			}
-			const field = reader.getFieldNumber();
-			switch (field) {
-			case 1:
-				const field1 = new googleProtobufTimestamp.Timestamp();
-				reader.readMessage(field1, googleProtobufTimestamp.Timestamp.deserializeBinaryFromReader);
-				message.setCreatedSince(field1);
-				break;
-			case 2:
-				const field2 = new googleProtobufDuration.Duration();
-				reader.readMessage(field2, googleProtobufDuration.Duration.deserializeBinaryFromReader);
-				message.setOlderThan(field2);
-				break;
-			default:
-				reader.skipField();
-				break;
-			}
-		}
-		return message;
-	}
-
+  static deserializeBinaryFromReader(message: ListUsersReq, reader: jspb.BinaryReader): ListUsersReq {
+    while (reader.nextField()) {
+      if (reader.isEndGroup()) {
+        break;
+      }
+      const field = reader.getFieldNumber();
+      switch (field) {
+        case 1:
+          const field1 = new googleProtobufTimestamp.Timestamp();
+          reader.readMessage(field1, googleProtobufTimestamp.Timestamp.deserializeBinaryFromReader);
+          message.setCreatedSince(field1);
+          break;
+        case 2:
+          const field2 = new googleProtobufDuration.Duration();
+          reader.readMessage(field2, googleProtobufDuration.Duration.deserializeBinaryFromReader);
+          message.setOlderThan(field2);
+          break;
+        default:
+          reader.skipField();
+          break;
+      }
+    }
+    return message;
+  }
 }
 
-
 function AddUserReqFromObject(obj: AddUserReq.AsObject | undefined): AddUserReq | undefined {
-	if (obj === undefined) {
-		return undefined;
-	}
-	const message = new AddUserReq();
-	message.setName(obj.name);
-	return message;
+  if (obj === undefined) {
+    return undefined;
+  }
+  const message = new AddUserReq();
+  message.setName(obj.name);
+  return message;
 }
 
 function UserFromObject(obj: User.AsObject | undefined): User | undefined {
-	if (obj === undefined) {
-		return undefined;
-	}
-	const message = new User();
-	message.setId(obj.id);
-	message.setName(obj.name);
-	(obj.roles || [])
-		.forEach((item) => message.addRoles(item));
-	(obj.names || [])
-		.forEach((item) => message.addNames(item));
-	message.setCreateDate(TimestampFromObject(obj.createDate));
-	(obj.labelsMap || [])
-		.forEach((entry) => message.getLabelsMap().set(entry[0], entry[1]));
-	(obj.moreLabelsMap || [])
-		.forEach((entry) => message.getMoreLabelsMap().set(entry[0], StringValueFromObject(entry[1])!))
-	return message;
+  if (obj === undefined) {
+    return undefined;
+  }
+  const message = new User();
+  message.setId(obj.id);
+  message.setName(obj.name);
+  (obj.roles || []).forEach((item) => message.addRoles(item));
+  (obj.names || []).forEach((item) => message.addNames(item));
+  message.setCreateDate(TimestampFromObject(obj.createDate));
+  (obj.labelsMap || []).forEach((entry) => message.getLabelsMap().set(entry[0], entry[1]));
+  (obj.moreLabelsMap || []).forEach((entry) =>
+    message.getMoreLabelsMap().set(entry[0], StringValueFromObject(entry[1])!)
+  );
+  return message;
 }
 
-function TimestampFromObject(obj: googleProtobufTimestamp.Timestamp.AsObject | undefined): googleProtobufTimestamp.Timestamp | undefined {
-	if (obj === undefined) {
-		return undefined;
-	}
-	const message = new googleProtobufTimestamp.Timestamp();
-	message.setSeconds(obj.seconds);
-	message.setNanos(obj.nanos);
-	return message;
+function TimestampFromObject(
+  obj: googleProtobufTimestamp.Timestamp.AsObject | undefined
+): googleProtobufTimestamp.Timestamp | undefined {
+  if (obj === undefined) {
+    return undefined;
+  }
+  const message = new googleProtobufTimestamp.Timestamp();
+  message.setSeconds(obj.seconds);
+  message.setNanos(obj.nanos);
+  return message;
 }
 
 function UpdateUserRequestFromObject(obj: UpdateUserRequest.AsObject | undefined): UpdateUserRequest | undefined {
-	if (obj === undefined) {
-		return undefined;
-	}
-	const message = new UpdateUserRequest();
-	message.setName(StringValueFromObject(obj.name));
-	return message;
+  if (obj === undefined) {
+    return undefined;
+  }
+  const message = new UpdateUserRequest();
+  message.setName(StringValueFromObject(obj.name));
+  return message;
 }
 
-function StringValueFromObject(obj: googleProtobufWrappers.StringValue.AsObject | undefined): googleProtobufWrappers.StringValue | undefined {
-	if (obj === undefined) {
-		return undefined;
-	}
-	const message = new googleProtobufWrappers.StringValue();
-	message.setValue(obj.value);
-	return message;
+function StringValueFromObject(
+  obj: googleProtobufWrappers.StringValue.AsObject | undefined
+): googleProtobufWrappers.StringValue | undefined {
+  if (obj === undefined) {
+    return undefined;
+  }
+  const message = new googleProtobufWrappers.StringValue();
+  message.setValue(obj.value);
+  return message;
 }
 
 function ListUsersReqFromObject(obj: ListUsersReq.AsObject | undefined): ListUsersReq | undefined {
-	if (obj === undefined) {
-		return undefined;
-	}
-	const message = new ListUsersReq();
-	message.setCreatedSince(TimestampFromObject(obj.createdSince));
-	message.setOlderThan(DurationFromObject(obj.olderThan));
-	return message;
+  if (obj === undefined) {
+    return undefined;
+  }
+  const message = new ListUsersReq();
+  message.setCreatedSince(TimestampFromObject(obj.createdSince));
+  message.setOlderThan(DurationFromObject(obj.olderThan));
+  return message;
 }
 
-function DurationFromObject(obj: googleProtobufDuration.Duration.AsObject | undefined): googleProtobufDuration.Duration | undefined {
-	if (obj === undefined) {
-		return undefined;
-	}
-	const message = new googleProtobufDuration.Duration();
-	message.setSeconds(obj.seconds);
-	message.setNanos(obj.nanos);
-	return message;
+function DurationFromObject(
+  obj: googleProtobufDuration.Duration.AsObject | undefined
+): googleProtobufDuration.Duration | undefined {
+  if (obj === undefined) {
+    return undefined;
+  }
+  const message = new googleProtobufDuration.Duration();
+  message.setSeconds(obj.seconds);
+  message.setNanos(obj.nanos);
+  return message;
 }
 
 function EmptyFromObject(obj: googleProtobufEmpty.Empty.AsObject | undefined): googleProtobufEmpty.Empty | undefined {
-	if (obj === undefined) {
-		return undefined;
-	}
-	const message = new googleProtobufEmpty.Empty();
-	return message;
+  if (obj === undefined) {
+    return undefined;
+  }
+  const message = new googleProtobufEmpty.Empty();
+  return message;
 }
-

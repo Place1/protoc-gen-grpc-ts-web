@@ -9,8 +9,7 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
-    "@types/google-protobuf": "^3.7.2",
-    "google-protobuf": "^4.0.0-rc.2",
+    "grpc-ts-web": "file:../",
     "grpc-web": "^1.2.0"
   },
   "devDependencies": {
