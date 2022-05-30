@@ -5,6 +5,8 @@ import { naming } from '../codegen/naming';
 export type Dependencies = Record<string, Marshaller<any>>;
 
 export interface Marshaller<T> {
+  serialize: (message: T) => Uint8Array;
+  deserialize: (bytes: Uint8Array) => T;
   serializeBinaryToWriter: (message: T, writer: BinaryWriter) => void;
   deserializeBinaryFromReader: (message: Partial<T>, reader: BinaryReader) => void;
 }
@@ -13,16 +15,58 @@ export abstract class MessageMarshaller<T> implements Marshaller<T> {
   protected abstract descriptor(): string;
   protected abstract dependencies(): Dependencies;
 
+  serialize = (message: T): Uint8Array => {
+    const writer = new BinaryWriter();
+    this.serializeBinaryToWriter(message, writer);
+    return writer.getResultBuffer();
+  };
+
+  deserialize = (bytes: Uint8Array): T => {
+    const message = {};
+    const reader = new BinaryReader(bytes);
+    this.deserializeBinaryFromReader(message, reader);
+    return message as T;
+  };
+
   serializeBinaryToWriter = (message: T, writer: BinaryWriter): void => {
     const descriptor = new DescriptorProto();
     DescriptorProto.deserializeBinaryFromReader(descriptor, new BinaryReader(this.descriptor()));
-    return createSerializeBinaryToWriter(this.dependencies(), descriptor)(message, writer);
+    const registry = this.dependencies();
+
+    for (const field of descriptor.getFieldList()) {
+      serializeField(registry, field, (message as any)[naming.field(field.getName())], writer);
+    }
   };
 
   deserializeBinaryFromReader = (message: Partial<T>, reader: BinaryReader): void => {
     const descriptor = new DescriptorProto();
     DescriptorProto.deserializeBinaryFromReader(descriptor, new BinaryReader(this.descriptor()));
-    return createDeserializeBinaryFromReader(this.dependencies(), descriptor)(message, reader);
+    const registry = this.dependencies();
+
+    for (const field of descriptor.getFieldList()) {
+      (message as any)[naming.field(field.getName())] = fieldDefaultValue(field);
+    }
+
+    while (reader.nextField()) {
+      if (reader.isEndGroup()) {
+        break;
+      }
+
+      const field = reader.getFieldNumber();
+
+      const fieldDesc = descriptor.getFieldList().find((fieldDesc) => fieldDesc.getNumber() === field);
+      if (!fieldDesc) {
+        reader.skipField();
+      } else {
+        const fieldValue = deserializeField(registry, fieldDesc, reader);
+
+        if (fieldDesc.getLabel() === FieldDescriptorProto.Label.LABEL_REPEATED) {
+          (message as any)[naming.field(fieldDesc.getName())].push(fieldValue);
+        } else {
+          (message as any)[naming.field(fieldDesc.getName())] = fieldValue;
+        }
+      }
+    }
   };
 }
 
@@ -72,43 +116,6 @@ function fieldDefaultValue(field: FieldDescriptorProto): any {
     default:
       return undefined;
   }
-}
-
-function createDeserializeBinaryFromReader(registry: Dependencies, descriptor: DescriptorProto) {
-  return (message: any, reader: BinaryReader): void => {
-    for (const field of descriptor.getFieldList()) {
-      message[naming.field(field.getName())] = fieldDefaultValue(field);
-    }
-
-    while (reader.nextField()) {
-      if (reader.isEndGroup()) {
-        break;
-      }
-
-      const field = reader.getFieldNumber();
-
-      const fieldDesc = descriptor.getFieldList().find((fieldDesc) => fieldDesc.getNumber() === field);
-      if (!fieldDesc) {
-        reader.skipField();
-      } else {
-        const fieldValue = deserializeField(registry, fieldDesc, reader);
-
-        if (fieldDesc.getLabel() === FieldDescriptorProto.Label.LABEL_REPEATED) {
-          message[naming.field(fieldDesc.getName())].push(fieldValue);
-        } else {
-          message[naming.field(fieldDesc.getName())] = fieldValue;
-        }
-      }
-    }
-  };
-}
-
-function createSerializeBinaryToWriter(registry: Dependencies, descriptor: DescriptorProto) {
-  return (message: any, writer: BinaryWriter): void => {
-    for (const field of descriptor.getFieldList()) {
-      serializeField(registry, field, message[naming.field(field.getName())], writer);
-    }
-  };
 }
 
 function deserializeField(registry: Dependencies, descriptor: FieldDescriptorProto, reader: BinaryReader): any {
