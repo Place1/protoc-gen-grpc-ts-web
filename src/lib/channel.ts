@@ -24,7 +24,7 @@ export class Channel<T> implements AsyncIterable<T> {
     public readonly capacity = 0,
     private readonly values: Array<T> = [],
     private readonly sends: Array<{ value: T; signal: Deferred<void> }> = [],
-    private readonly recvs: Array<Deferred<Value<T>>> = []
+    private readonly recvs: Array<Deferred<Value<T>>> = [],
   ) {}
 
   public send(value: T): Promise<void> {

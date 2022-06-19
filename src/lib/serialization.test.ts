@@ -18,14 +18,7 @@ describe('serialization', () => {
       roles: [Role.ADMIN, Role.MEMBER],
     };
 
-    const writer = new BinaryWriter();
-    marshaller.serializeBinaryToWriter(user, writer);
-    const bytes = writer.getResultBuffer();
-    expect(bytes.length).toBeGreaterThan(0);
-
-    const reader = new BinaryReader(bytes);
-    const unmarshalled = {};
-    marshaller.deserializeBinaryFromReader(unmarshalled, reader);
+    const unmarshalled = marshaller.deserialize(marshaller.serialize(user));
 
     expect(unmarshalled).toStrictEqual(user);
   });
